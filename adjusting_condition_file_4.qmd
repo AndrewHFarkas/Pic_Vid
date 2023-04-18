@@ -1,0 +1,202 @@
+---
+title: "adjusting_condition_file"
+format: html
+editor: visual
+jupyter: python3
+---
+
+This has to be done for the videos because in the next step we will do a hilbert transformation and there is an issue with the function that does not account for the differences in 'good' trials from the PrePro stage. So we have to do by scene then average them back together (explained in later steps).
+
+This file is organized by replacing the original .ses.con files with the 'master' .ses.con files that were manually created. We can substitute by scene or by category and can do either the pics or the vids depending on which one you are going through at the moment.
+
+#Packages
+
+```{r setup}
+library(fs)
+library(dplyr)
+```
+
+#Replacing all ses.con files by scene.
+
+```{r}
+raw_data_folder <- "/Volumes/startech3TB_bkup/research_data/Pic_Vid/raw_data"
+
+all_ses_cons <- list.files(raw_data_folder,
+                           pattern = ".ses.con$",
+                           recursive = T, 
+                           full.names = T)
+
+A_1_cons <- all_ses_cons[grepl(pattern = "A_1", x = all_ses_cons)]
+A_2_cons <- all_ses_cons[grepl(pattern = "A_2", x = all_ses_cons)]
+B_1_cons <- all_ses_cons[grepl(pattern = "B_1", x = all_ses_cons)]
+B_2_cons <- all_ses_cons[grepl(pattern = "B_2", x = all_ses_cons)]
+C_1_cons <- all_ses_cons[grepl(pattern = "C_1", x = all_ses_cons)]
+C_2_cons <- all_ses_cons[grepl(pattern = "C_2", x = all_ses_cons)]
+D_1_cons <- all_ses_cons[grepl(pattern = "D_1", x = all_ses_cons)]
+D_2_cons <- all_ses_cons[grepl(pattern = "D_2", x = all_ses_cons)]
+```
+
+##For Vids
+
+```{r}
+#Vids
+file.copy(from = "/Volumes/startech3TB_bkup/research_data/Pic_Vid/condition_files/by_scene/Condition_A_1.f.ses.con",
+          to = A_1_cons,
+          overwrite = T)
+
+#Vids
+file.copy(from = "/Volumes/startech3TB_bkup/research_data/Pic_Vid/condition_files/by_scene/Condition_B_2.f.ses.con",
+          to = B_2_cons,
+          overwrite = T)
+#Vids
+file.copy(from = "/Volumes/startech3TB_bkup/research_data/Pic_Vid/condition_files/by_scene/Condition_C_1.f.ses.con",
+          to = C_1_cons,
+          overwrite = T)
+
+#Vids
+file.copy(from = "/Volumes/startech3TB_bkup/research_data/Pic_Vid/condition_files/by_scene/Condition_D_2.f.ses.con",
+          to = D_2_cons,
+          overwrite = T)
+```
+
+##For Pics
+
+```{r}
+#Pics
+file.copy(from = "/Volumes/startech3TB_bkup/research_data/Pic_Vid/condition_files/by_scene/Condition_A_2.f.ses.con",
+          to = A_2_cons,
+          overwrite = T)
+#Pics
+file.copy(from = "/Volumes/startech3TB_bkup/research_data/Pic_Vid/condition_files/by_scene/Condition_B_1.f.ses.con",
+          to = B_1_cons,
+          overwrite = T)
+#Pics
+file.copy(from = "/Volumes/startech3TB_bkup/research_data/Pic_Vid/condition_files/by_scene/Condition_C_2.f.ses.con",
+          to = C_2_cons,
+          overwrite = T)
+#Pics
+file.copy(from = "/Volumes/startech3TB_bkup/research_data/Pic_Vid/condition_files/by_scene/Condition_D_1.f.ses.con",
+          to = D_1_cons,
+          overwrite = T)
+```
+
+#Replacing all of the ses.con files by category
+
+```{r}
+raw_data_folder <- "/Volumes/startech3TB_bkup/research_data/Pic_Vid/raw_data"
+
+all_ses_cons <- list.files(raw_data_folder,
+                           pattern = ".ses.con$",
+                           recursive = T, 
+                           full.names = T)
+
+A_1_cons <- all_ses_cons[grepl(pattern = "A_1", x = all_ses_cons)]
+A_2_cons <- all_ses_cons[grepl(pattern = "A_2", x = all_ses_cons)]
+B_1_cons <- all_ses_cons[grepl(pattern = "B_1", x = all_ses_cons)]
+B_2_cons <- all_ses_cons[grepl(pattern = "B_2", x = all_ses_cons)]
+C_1_cons <- all_ses_cons[grepl(pattern = "C_1", x = all_ses_cons)]
+C_2_cons <- all_ses_cons[grepl(pattern = "C_2", x = all_ses_cons)]
+D_1_cons <- all_ses_cons[grepl(pattern = "D_1", x = all_ses_cons)]
+D_2_cons <- all_ses_cons[grepl(pattern = "D_2", x = all_ses_cons)]
+```
+
+##For Vids
+
+```{r}
+file.copy(from = "/Volumes/startech3TB_bkup/research_data/Pic_Vid/condition_files/by_category/Condition_A_1.f.ses.con",
+          to = A_1_cons,
+          overwrite = T)
+
+
+file.copy(from = "/Volumes/startech3TB_bkup/research_data/Pic_Vid/condition_files/by_category/Condition_B_2.f.ses.con",
+          to = B_2_cons,
+          overwrite = T)
+file.copy(from = "/Volumes/startech3TB_bkup/research_data/Pic_Vid/condition_files/by_category/Condition_C_1.f.ses.con",
+          to = C_1_cons,
+          overwrite = T)
+
+file.copy(from = "/Volumes/startech3TB_bkup/research_data/Pic_Vid/condition_files/by_category/Condition_D_2.f.ses.con",
+          to = D_2_cons,
+          overwrite = T)
+
+
+```
+
+##For Pics
+
+```{r}
+file.copy(from = "/Volumes/startech3TB_bkup/research_data/Pic_Vid/condition_files/by_category/Condition_A_2.f.ses.con",
+          to = A_2_cons,
+          overwrite = T)
+file.copy(from = "/Volumes/startech3TB_bkup/research_data/Pic_Vid/condition_files/by_category/Condition_B_1.f.ses.con",
+          to = B_1_cons,
+          overwrite = T)
+file.copy(from = "/Volumes/startech3TB_bkup/research_data/Pic_Vid/condition_files/by_category/Condition_C_2.f.ses.con",
+          to = C_2_cons,
+          overwrite = T)
+file.copy(from = "/Volumes/startech3TB_bkup/research_data/Pic_Vid/condition_files/by_category/Condition_D_1.f.ses.con",
+          to = D_1_cons,
+          overwrite = T)
+```
+
+#Old function that does not work
+
+```{r}
+# library(fs)
+# 
+# replace_condition_files <- function(analysis_type, parent_folder, stim_order_csv) {
+#   if (!(analysis_type %in% c("by_category", "by_scene"))) {
+#     stop("Invalid analysis_type. Must be either 'by_category' or 'by_scene'.")
+#   }
+#   
+#   stim_order<- read.csv(stim_order_csv)
+#   
+#   condition_files_folder <- file.path(parent_folder, "condition_files", analysis_type)
+#   raw_data_folder <- file.path(parent_folder, "raw_data")
+#   
+#   raw_data_subfolders <- dir(raw_data_folder, pattern = "Pic_Vid_\\d{1,3}_[A-D]", full.names = TRUE)
+#   
+#   for (raw_data_subfolder in raw_data_subfolders) {
+#     runs <- c("run_1", "run_2")
+#     for (run in runs) {
+#       run_folder <- file.path(raw_data_subfolder, run)
+#       run_number <- gsub("run_", "", run)
+#       raw_file_pattern <- paste0("Pic_Vid_\\d{1,3}_[A-D]_", run_number, "\\.f\\.ses\\.con")
+#       raw_file <- list.files(run_folder, pattern = raw_file_pattern, full.names = TRUE)
+#       
+#       if (length(raw_file) > 0) {
+#         condition_letter <- gsub(".*(Pic_Vid_\\d{1,3}_)([A-D])_.*", "\\2", raw_file)
+#         
+#         # Determine whether the condition file is in the 'Pics' or 'Vids' folder
+#         stim_order_row<- stim_order[stim_order$Condition == condition_letter ,]
+#         subfolder <- ifelse(run_number == "1", unlist(strsplit(stim_order_row$Stim, "_"))[1], unlist(strsplit(stim_order_row$Stim, "_"))[2])
+#         condition_files_subfolder <- file.path(condition_files_folder, subfolder)
+#         
+#         condition_file_pattern <- paste0("Condition_", condition_letter, "_",run_number, "\\.f\\.ses\\.con")
+#         condition_file <- list.files(condition_files_subfolder, pattern = condition_file_pattern, full.names = TRUE)
+#         
+#         if (length(condition_file) > 0) {
+#           file.copy(condition_file, raw_file, overwrite = TRUE)
+#         } else {
+#           warning("No matching condition file found for: ", raw_file)
+#         }
+#       }
+#     }
+#   }
+# }
+
+```
+
+#Example usage:
+
+```{r}
+# replace_condition_files("by_scene", "/Volumes/startech3TB_bkup/research_data/Pic_Vid", "/Volumes/startech3TB_bkup/research_data/Pic_Vid/condition_files/Condition_key.csv")
+# 
+# parent_folder<- "/Volumes/startech3TB_bkup/research_data/Pic_Vid"
+# analysis_type<- "by_scene"
+# run <- "run_1"
+# 
+# raw_data_subfolder<- "/Volumes/startech3TB_bkup/research_data/Pic_Vid/raw_data/Pic_Vid_001_A"
+# 
+# stim_order_csv<- "/Volumes/startech3TB_bkup/research_data/Pic_Vid/condition_files/Condition_key.csv"
+```

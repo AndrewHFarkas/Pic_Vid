@@ -1,0 +1,59 @@
+---
+title: "Creating_BDF_folders"
+format: html
+editor: visual
+---
+
+Creating new folders for all of the .bdf files
+
+Switch from the "visual" to the "source" view in this script
+
+```{r}
+library(tools)
+library(stringr)
+
+
+parent_folder<- "/Volumes/startech3TB_bkup/research_data/Pic_Vid/raw_data"
+
+# List all files in the parent folder
+files <- list.files(parent_folder)
+
+# Function to extract the prefix from the file name
+extract_prefix <- function(filename) {
+  str_replace(filename, "(_\\d+)?\\.bdf$", "")
+}
+
+# Function to extract the run number from the file name
+extract_run_number <- function(filename) {
+  str_extract(filename, "(?<=_)(\\d+)(?=\\.bdf$)")
+}
+
+# Create new folders for each file and move the file into the new folder
+for (file in files) {
+  # Check if the file extension is .bdf, otherwise move to the next iteration
+  if (file_ext(file) != "bdf") {
+    next
+  }
+
+  old_file_path <- file.path(parent_folder, file)
+  prefix <- extract_prefix(file)
+  new_folder_path <- file.path(parent_folder, prefix)
+  
+  # Create the main folder if it does not exist
+  if (!dir.exists(new_folder_path) && !file.info(old_file_path)$isdir) {
+    dir.create(new_folder_path)
+  }
+  
+  # Create the 'run' subfolder based on the file name
+  run_number <- extract_run_number(file)
+  run_subfolder <- paste0("run_", run_number)
+  new_run_folder_path <- file.path(new_folder_path, run_subfolder)
+  
+  if (!dir.exists(new_run_folder_path)) {
+    dir.create(new_run_folder_path)
+  }
+  
+  new_file_path <- file.path(new_run_folder_path, file)
+  file.rename(old_file_path, new_file_path)
+}
+```
