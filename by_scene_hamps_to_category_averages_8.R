@@ -28,7 +28,7 @@ start_time <- Sys.time()
 by_scene <- read_ar_files(data_folders = by_scene_hamps_directory,
                           patterns = "hamp8$",
                           include_channel_name = T,
-                          include_file_name = T,
+                          include_file_name = T
                           # ,
                           # select_time_points = c(sec_1_tmpt:sec_9_tmpt),
                           # average_timepoints = T

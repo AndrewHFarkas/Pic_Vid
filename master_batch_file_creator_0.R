@@ -43,8 +43,6 @@ unpleasant_ar <-                 list.files(cat_ar_dir,
                                                pattern = "at3.ar$",
                                                full.names = T)
 
-
-
 ars <- c(pleasant_ar,
            neutral_ar,
            unpleasant_ar)
