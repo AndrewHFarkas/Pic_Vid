@@ -28,7 +28,7 @@ There are two pictures that show what the PrePro gui should look like. One for t
 
 Video conditions were: A_1, B_2, C_1, D_2
 
-Scene condtions were: A_2, B_1, C_2, D_1
+Scene conditions were: A_2, B_1, C_2, D_1
 
 # Step 3 - EditAEM 
 

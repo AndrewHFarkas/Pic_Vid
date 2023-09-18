@@ -1,11 +1,12 @@
 
 %% 
 
-three_cats_per_par = readtable("/Volumes/startech3TB_bkup/research_data/Pic_Vid/misc/by_categorey_3_from_by_scene.csv");
+% three_cats_per_par = readtable("/Volumes/startech3TB_bkup/research_data/Pic_Vid/misc/by_categorey_3_from_by_scene.csv");
 
+three_cats_per_par = readtable("/home/andrewf/Research_data/EEG/Pic_Vid/misc/by_categorey_3_from_by_scene.csv");
 
 %% 
-out_file_path_parent = char("/Volumes/startech3TB_bkup/research_data/Pic_Vid/hamp_files/videos/category/");
+out_file_path_parent = char("/home/andrewf/Research_data/EEG/Pic_Vid/hamp_files/videos/by_category/");
 
 number_of_sensors = 128;
 trigger_point = 1025;
@@ -15,7 +16,7 @@ end_index = number_of_sensors;
 
 ssvep_mat = table2array(three_cats_per_par( : , 5:end));
 
-number_of_participants = 4;
+number_of_participants = 49;
 number_of_categories = 3;
 number_of_files_to_generate = number_of_participants*number_of_categories;
 

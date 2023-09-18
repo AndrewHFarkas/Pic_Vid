@@ -11,11 +11,15 @@ andrew_data_folder <- "/home/andrewf/Research_data/EEG/Pic_Vid"
 if (dir.exists(sabat_data_folder)) {
   parent_directory <- sabat_data_folder
   path_to_raw_data <- paste0(sabat_data_folder, "/raw_data")
-  pic_by_scene_destination <- paste0(sabat_data_folder, "/avg_files/pics/by_scene/")
+  pic_by_scene_destination <- paste0(sabat_data_folder, "/average_files/pics/by_scene/")
+  pic_by_category_destination <- paste0(sabat_data_folder, "/average_files/pics/by_category/")
+  vid_by_scene_destination <- paste0(sabat_data_folder, "/average_files/videos/by_scene/")
 } else if(dir.exists(andrew_data_folder)) {
   parent_directory <- andrew_data_folder
   path_to_raw_data <- paste0(andrew_data_folder, "/raw_data")
-  pic_by_scene_destination <- paste0(andrew_data_folder, "/avg_files/pics/by_scene/")
+  pic_by_scene_destination <- paste0(andrew_data_folder, "/average_files/pics/by_scene/")
+  pic_by_category_destination <- paste0(andrew_data_folder, "/average_files/pics/by_category/")
+  vid_by_scene_destination <- paste0(andrew_data_folder, "/average_files/videos/by_scene/")
 } else{
   stop("Something is wrong, are you working on the right computer with access to the data")
 }
@@ -25,6 +29,8 @@ video_conditions_regex  <- video_conditions %>% paste(collapse = "|")
 picture_conditions  <- c("A_2", "B_1", "C_2", "D_1")
 picture_conditions_regex  <- picture_conditions %>% paste(collapse = "|")
 
+grab_files_newer_than <- ymd_h("2023-09-18 2", tz = "EDT")
+
 picture_files_to_move <- list.files(path = path_to_raw_data,
            pattern = ".ar$",
            recursive = T,
@@ -33,24 +39,48 @@ picture_files_to_move <- list.files(path = path_to_raw_data,
   add_column(., 
              file_name = rownames(.),
              .before = 1) %>% 
-  filter(str_detect(file_name, picture_conditions_regex)) %>% 
+  filter(str_detect(file_name, picture_conditions_regex),
+         ctime > grab_files_newer_than) %>% 
   pull(file_name)
 
 
+# file.copy(from = picture_files_to_move,
+#           to = pic_by_scene_destination, 
+#           overwrite = T)
+
 file.copy(from = picture_files_to_move,
-          to = pic_by_scene_destination, 
+          to = pic_by_category_destination,
           overwrite = T)
 
 
+video_files_to_move <- list.files(path = path_to_raw_data,
+                                  pattern = ".ar$",
+                                  recursive = T,
+                                  full.names = T) %>% 
+  file.info() %>%
+  add_column(., 
+             file_name = rownames(.),
+             .before = 1) %>% 
+  filter(str_detect(file_name, video_conditions_regex),
+         ctime > grab_files_newer_than) %>% 
+  pull(file_name)
 
-paste0(video_conditions, ".ar$") %>% 
-  paste(collapse = "|") %>% 
-  list.files(path = path_to_raw_data,
-             pattern = .,
-             recursive = T,
-             full.names = T) 
-  
 
+
+
+
+# video_files_to_move <- 
+#   paste0(video_conditions, "\\.f\\.at[1-9][0-9]?\\.ar$") %>% 
+#   paste(collapse = "|") %>% 
+#   list.files(path = path_to_raw_data,
+#              pattern = .,
+#              recursive = T,
+#              full.names = T) 
+
+file.copy(from = video_files_to_move,
+          to = vid_by_scene_destination, 
+          overwrite = T,
+          copy.date = T)
 
 
 hold <- list.files(path = path_to_raw_data,

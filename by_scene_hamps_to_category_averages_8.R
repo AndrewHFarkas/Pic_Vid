@@ -18,9 +18,24 @@ library(tidyverse)
 library(reticulate)
 library(EMEGShelper)
 
+sabat_data_folder <- "/Volumes/startech3TB_bkup/research_data/Pic_Vid"
+andrew_data_folder <- "/home/andrewf/Research_data/EEG/Pic_Vid"
+
+if (dir.exists(sabat_data_folder)) {
+  parent_directory <- sabat_data_folder
+  
+  by_scene_hamps_directory <- paste0(sabat_data_folder, "/hamp_files/videos/by_scene")
+
+} else if(dir.exists(andrew_data_folder)) {
+  parent_directory <- andrew_data_folder
+
+  by_scene_hamps_directory <- paste0(andrew_data_folder, "/hamp_files/videos/by_scene")
+
+} else{
+  stop("Something is wrong, are you working on the right computer with access to the data")
+}
 
 #These lines of code take the hamp files that were converted into MATLAB and puts them into R objects 
-by_scene_hamps_directory <- "/Volumes/startech3TB_bkup/research_data/Pic_Vid/hamp_files/videos/by_scene"
 
 start_time <- Sys.time()
 
@@ -39,19 +54,19 @@ end_time - start_time
 
 #Saves the hamp files as a .RData object so that it is easier to pull later 
 save(by_scene,
-     file = "/Volumes/startech3TB_bkup/research_data/Pic_Vid/misc/by_scene_hamp.RData")
+     file = paste0(parent_directory, "/misc/by_scene_hamp.RData"))
 
 #Loads in the .Rdata object that was saved in the lines above 
-load("/Volumes/startech3TB_bkup/research_data/Pic_Vid/misc/by_scene_hamp.RData")
+# load("/Volumes/startech3TB_bkup/research_data/Pic_Vid/misc/by_scene_hamp.RData")
 
 #This is created manually and serves as a object that shows the video's category number and the unique video ID number 
-vid_name_key <- read.csv("/Volumes/startech3TB_bkup/research_data/Pic_Vid/misc/video_key.csv")
+vid_name_key <- read.csv(paste0(parent_directory, "/misc/video_key.csv"))
 
 by_scene_info <- data.frame("category" = NA,
-                                     "scene_id_con_num" = NA,
-                                     "scene" = NA,
-                                     "par_id" = NA,
-                                     #"block" = NA,
+                            "scene_id_con_num" = NA,
+                            "scene" = NA,
+                            "par_id" = NA,
+                            #"block" = NA,
                             by_scene)
 
 
@@ -97,9 +112,28 @@ video_column_key <- data.frame(time_ms,
 
 
 save(by_scene_info, video_column_key,
-     file = "/Volumes/startech3TB_bkup/research_data/Pic_Vid/misc/by_video.RData")
+     file = paste0(parent_directory, "/misc/by_video.RData"))
 
-load("/Volumes/startech3TB_bkup/research_data/Pic_Vid/misc/by_video.RData")
+# load("/Volumes/startech3TB_bkup/research_data/Pic_Vid/misc/by_video.RData")
+
+load(file = paste0(parent_directory, "/misc/by_video.RData"))
+
+number_of_good_trials_per_valence_video_per_par <- by_scene_info %>% 
+  group_by(par_id, category) %>% 
+  summarize("number_of_good_out_of_30" = n()/128,
+            "percent_good" = round(((n()/128)/30)*100,2) )
+
+write.csv(number_of_good_trials_per_valence_video_per_par, 
+          file = paste0(parent_directory, "/misc/number_of_good_trials_per_valence_video_per_par.csv"),
+          quote = F, row.names = F)
+
+number_of_good_trials_per_valence_video_per_par%>% 
+  filter(percent_good >= 50) %>% 
+  mutate(n = n()) %>% 
+  filter(n >= 3) %>% 
+  ungroup() %>% 
+  pull(par_id) %>% 
+  unique()
 
 by_scene_info$category %>% table()
 by_scene_info$channel_names %>% table()
@@ -113,11 +147,16 @@ by_category_info <- by_scene_info %>%
   summarise_all(mean)
 
 by_scene_info[1:7,1:7]
+by_category_info[1:7,1:7]
 
 
 write.csv(by_category_info, 
-          file = "/Volumes/startech3TB_bkup/research_data/Pic_Vid/misc/by_categorey_3_from_by_scene.csv")
+          file = paste0(parent_directory, "/misc/by_categorey_3_from_by_scene.csv"))
 
 
 save(by_category_info, video_column_key,
-     file = "/Volumes/startech3TB_bkup/research_data/Pic_Vid/misc/by_categorey_3_from_by_scene.RData")
+     file = paste0(parent_directory, "/misc/by_categorey_3_from_by_scene.RData"))
+
+load(file = paste0(parent_directory, "/misc/by_categorey_3_from_by_scene.RData"))
+
+

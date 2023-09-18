@@ -5,22 +5,36 @@ editor: visual
 jupyter: python3
 ---
 
-This has to be done for the videos because in the next step we will do a hilbert transformation and there is an issue with the function that does not account for the differences in 'good' trials from the PrePro stage. So we have to do by scene then average them back together (explained in later steps).
-
 This file is organized by replacing the original .ses.con files with the 'master' .ses.con files that were manually created. We can substitute by scene or by category and can do either the pics or the vids depending on which one you are going through at the moment.
 
-#Packages
+# Packages
 
 ```{r setup}
-library(fs)
 library(dplyr)
 ```
 
-#Replacing all ses.con files by scene.
+# Pick folder based on current computer
 
 ```{r}
-raw_data_folder <- "/Volumes/startech3TB_bkup/research_data/Pic_Vid/raw_data"
+# Andrew's last know location of data in sabat lab
+sabat_data_folder <- "/Volumes/startech3TB_bkup/research_data/Pic_Vid"
+andrew_data_folder <- "/home/andrewf/Research_data/EEG/Pic_Vid"
 
+if (dir.exists(sabat_data_folder)) {
+  parent_directory <- sabat_data_folder
+  raw_data_folder <- paste0(sabat_data_folder, "/raw_data")
+} else if(dir.exists(andrew_data_folder)) {
+  parent_directory <- andrew_data_folder
+  raw_data_folder <- paste0(andrew_data_folder, "/raw_data")
+} else{
+  stop("Something is wrong, are you working on the right computer with access to the data")
+}
+
+```
+
+# Replacing all ses.con files.
+
+```{r}
 all_ses_cons <- list.files(raw_data_folder,
                            pattern = ".ses.con$",
                            recursive = T, 
@@ -36,54 +50,49 @@ D_1_cons <- all_ses_cons[grepl(pattern = "D_1", x = all_ses_cons)]
 D_2_cons <- all_ses_cons[grepl(pattern = "D_2", x = all_ses_cons)]
 ```
 
-##For Vids
+## For Videos
 
 ```{r}
-#Vids
-file.copy(from = "/Volumes/startech3TB_bkup/research_data/Pic_Vid/condition_files/by_scene/Condition_A_1.f.ses.con",
+file.copy(from = paste0(parent_directory, "/condition_files/by_scene/Condition_A_1.f.ses.con"),
           to = A_1_cons,
           overwrite = T)
 
-#Vids
-file.copy(from = "/Volumes/startech3TB_bkup/research_data/Pic_Vid/condition_files/by_scene/Condition_B_2.f.ses.con",
+file.copy(from = paste0(parent_directory, "/condition_files/by_scene/Condition_B_2.f.ses.con"),
           to = B_2_cons,
           overwrite = T)
-#Vids
-file.copy(from = "/Volumes/startech3TB_bkup/research_data/Pic_Vid/condition_files/by_scene/Condition_C_1.f.ses.con",
+
+file.copy(from = paste0(parent_directory, "/condition_files/by_scene/Condition_C_1.f.ses.con"),
           to = C_1_cons,
           overwrite = T)
 
-#Vids
-file.copy(from = "/Volumes/startech3TB_bkup/research_data/Pic_Vid/condition_files/by_scene/Condition_D_2.f.ses.con",
+file.copy(from = paste0(parent_directory, "/condition_files/by_scene/Condition_D_2.f.ses.con"),
           to = D_2_cons,
           overwrite = T)
 ```
 
-##For Pics
+## For Pictures
 
 ```{r}
-#Pics
-file.copy(from = "/Volumes/startech3TB_bkup/research_data/Pic_Vid/condition_files/by_scene/Condition_A_2.f.ses.con",
+file.copy(from = paste0(parent_directory, "/condition_files/by_scene/Condition_A_2.f.ses.con"),
           to = A_2_cons,
           overwrite = T)
-#Pics
-file.copy(from = "/Volumes/startech3TB_bkup/research_data/Pic_Vid/condition_files/by_scene/Condition_B_1.f.ses.con",
+
+file.copy(from = paste0(parent_directory, "/condition_files/by_scene/Condition_B_1.f.ses.con"),
           to = B_1_cons,
           overwrite = T)
-#Pics
-file.copy(from = "/Volumes/startech3TB_bkup/research_data/Pic_Vid/condition_files/by_scene/Condition_C_2.f.ses.con",
+
+file.copy(from = paste0(parent_directory, "/condition_files/by_scene/Condition_C_2.f.ses.con"),
           to = C_2_cons,
           overwrite = T)
-#Pics
-file.copy(from = "/Volumes/startech3TB_bkup/research_data/Pic_Vid/condition_files/by_scene/Condition_D_1.f.ses.con",
+
+file.copy(from = paste0(parent_directory, "/condition_files/by_scene/Condition_D_1.f.ses.con"),
           to = D_1_cons,
           overwrite = T)
 ```
 
-#Replacing all of the ses.con files by category
+# Replacing all of the ses.con files by category
 
 ```{r}
-raw_data_folder <- "/Volumes/startech3TB_bkup/research_data/Pic_Vid/raw_data"
 
 all_ses_cons <- list.files(raw_data_folder,
                            pattern = ".ses.con$",
@@ -100,41 +109,44 @@ D_1_cons <- all_ses_cons[grepl(pattern = "D_1", x = all_ses_cons)]
 D_2_cons <- all_ses_cons[grepl(pattern = "D_2", x = all_ses_cons)]
 ```
 
-##For Vids
+## For Vids
 
 ```{r}
-file.copy(from = "/Volumes/startech3TB_bkup/research_data/Pic_Vid/condition_files/by_category/Condition_A_1.f.ses.con",
+file.copy(from = paste0(parent_directory, "/condition_files/by_category/Condition_A_1.f.ses.con"),
           to = A_1_cons,
           overwrite = T)
 
-
-file.copy(from = "/Volumes/startech3TB_bkup/research_data/Pic_Vid/condition_files/by_category/Condition_B_2.f.ses.con",
+file.copy(from = paste0(parent_directory, "/condition_files/by_category/Condition_B_2.f.ses.con"),
           to = B_2_cons,
           overwrite = T)
-file.copy(from = "/Volumes/startech3TB_bkup/research_data/Pic_Vid/condition_files/by_category/Condition_C_1.f.ses.con",
+
+file.copy(from = paste0(parent_directory, "/condition_files/by_category/Condition_C_1.f.ses.con"),
           to = C_1_cons,
           overwrite = T)
 
-file.copy(from = "/Volumes/startech3TB_bkup/research_data/Pic_Vid/condition_files/by_category/Condition_D_2.f.ses.con",
+file.copy(from = paste0(parent_directory, "/condition_files/by_category/Condition_D_2.f.ses.con"),
           to = D_2_cons,
           overwrite = T)
 
 
 ```
 
-##For Pics
+## For Pics
 
 ```{r}
-file.copy(from = "/Volumes/startech3TB_bkup/research_data/Pic_Vid/condition_files/by_category/Condition_A_2.f.ses.con",
+file.copy(from = paste0(parent_directory, "/condition_files/by_category/Condition_A_2.f.ses.con"),
           to = A_2_cons,
           overwrite = T)
-file.copy(from = "/Volumes/startech3TB_bkup/research_data/Pic_Vid/condition_files/by_category/Condition_B_1.f.ses.con",
+
+file.copy(from = paste0(parent_directory, "/condition_files/by_category/Condition_B_1.f.ses.con"),
           to = B_1_cons,
           overwrite = T)
-file.copy(from = "/Volumes/startech3TB_bkup/research_data/Pic_Vid/condition_files/by_category/Condition_C_2.f.ses.con",
+
+file.copy(from = paste0(parent_directory, "/condition_files/by_category/Condition_C_2.f.ses.con"),
           to = C_2_cons,
           overwrite = T)
-file.copy(from = "/Volumes/startech3TB_bkup/research_data/Pic_Vid/condition_files/by_category/Condition_D_1.f.ses.con",
+
+file.copy(from = paste0(parent_directory, "/condition_files/by_category/Condition_D_1.f.ses.con"),
           to = D_1_cons,
           overwrite = T)
 ```
