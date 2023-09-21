@@ -14,6 +14,8 @@ if (dir.exists(sabat_data_folder)) {
                                         "/avg_files/pics/by_category")
   picture_by_cat_wave_directory <- paste0(sabat_data_folder, 
                                         "/stats_folder/picture_by_cat_49pars/CAVG")
+  picture_by_scene_ar_directory <- paste0(sabat_data_folder, 
+                                        "/avg_files/pics/by_scene")
   video_by_cat_directory <- paste0(sabat_data_folder, 
                                 "/hamp_files/videos/category")
   video_by_cat_wave_directory <- paste0(sabat_data_folder, 
@@ -27,6 +29,8 @@ if (dir.exists(sabat_data_folder)) {
                                         "/average_files/pics/by_category")
   picture_by_cat_wave_directory <- paste0(andrew_data_folder, 
                                 "/stats_folder/picture_by_cat_49pars/CAVG")
+  picture_by_scene_ar_directory <- paste0(andrew_data_folder, 
+                                        "/average_files/pics/by_scene")
   video_by_cat_directory <- paste0(andrew_data_folder, 
                                 "/hamp_files/videos/by_category")
   video_by_cat_wave_directory <- paste0(andrew_data_folder, 
@@ -207,6 +211,9 @@ lpp_cat_wave <- lpp_cat_wave %>%
   select(time_ms, category, amp) %>% 
   arrange(category, time_ms)
 
+
+  
+
 #ssvep 1000ms 1537pt - 9000ms 5633pt
 start_time_ms <- -2000
 number_of_time_points <- 6146
@@ -247,6 +254,49 @@ ssvep_cat_wave <- ssvep_cat_wave %>%
   select(time_ms, category, amp) %>% 
   arrange(category, time_ms)
 
+# ssvep by video
+# 
+load(paste0(parent_directory,"/misc/by_video.RData"))
+
+by_video_ssvep_amp <- by_scene_info %>% 
+  filter(channel_names %in% occipital_chans) %>% 
+  select(!any_of(c("category", "scene_id_con_num", "file_name", "channel_names"))) %>% 
+  group_by(par_id, scene) %>% 
+  summarise_all(mean) %>% 
+  ungroup() %>% 
+  mutate(., ssvep_amp = rowMeans(as.matrix(select(., paste0("V", c(1537:5633))))),
+         .after = "scene") %>% 
+  group_by(par_id) %>% 
+  mutate(zscore_ssvep_amp = as.numeric(scale(ssvep_amp), .after = "ssvep_amp")) %>% 
+  select(par_id, scene, ssvep_amp, zscore_ssvep_amp) %>% 
+  ungroup() %>% 
+  mutate(par_id = stringr::str_extract(par_id, "\\d+") %>% as.numeric()) %>% 
+  filter(!par_id %in% bad_participants)
+
+# lpp by scene
+
+lpp_scene_dat <- EMEGShelper::read_ar_files(data_folders = picture_by_scene_ar_directory,
+                                          patterns = ".ar$",
+                                          baseline_pts = c(14:65),
+                                          select_time_points = c(279:526),
+                                          average_channels = T,
+                                          average_timepoints = T,
+                                          include_file_name = T,
+                                          extract_channels = lpp_chans) %>% 
+  rename(amp = V1)
+
+lpp_scene_dat <- lpp_scene_dat %>% 
+  reframe(par_id = stringr::str_extract(file_name, "\\d+") %>% as.numeric(),
+          scene_id = stringr::str_extract(file_name, "(\\d+)(?!.*\\d)") %>% as.numeric(),
+          lpp_amp = amp) %>% 
+  group_by(par_id) %>% 
+  mutate(zscore_lpp_amp = as.numeric(scale(lpp_amp)))
+
+lpp_scene_dat <- by_scene_info %>% 
+  select(scene_id_con_num, scene) %>% 
+  merge(y = lpp_scene_dat, by.x = "scene_id_con_num", by.y = "scene_id", all.y = T) %>% 
+  rename(scene_id = scene_id_con_num)
+
 # Add necessary information and merge
 lpp_cat_dat <- lpp_cat_dat %>% 
   reframe(par_id = stringr::str_extract(lpp_cat_dat$file_name, "\\d+") %>% as.numeric(),
@@ -286,6 +336,18 @@ ssvep_lpp_dat_by_participant <- lpp_cat_dat %>%
          category = factor(category,
                            levels = c("pleasant", "neutral", "unpleasant")))
 
+gm_by_video_ssvep_amp <- by_video_ssvep_amp %>% 
+  group_by(scene) %>% 
+  select(-par_id) %>% 
+  summarise_all(mean)
+
+gm_lpp_scene_dat <- lpp_scene_dat %>% 
+  group_by(scene) %>% 
+  select(-par_id) %>% 
+  summarise_all(mean)
+  
+
+
 # Stats
 afex::aov_ez(id = "par_id", 
              dv = "zscore_ssvep_amp", 
@@ -295,8 +357,7 @@ afex::aov_ez(id = "par_id",
 afex::aov_ez(id = "par_id", 
              dv = "zscore_lpp_amp", 
              within = "category", 
-             data = ssvep_lpp_dat_by_participant) %>% 
-  summary()
+             data = ssvep_lpp_dat_by_participant)
 
 
 ssvep_lpp_dat_by_participant %>% 
@@ -321,6 +382,8 @@ gm_amp_long <- gm_ssvep_lpp %>%
   ) %>% 
   rename(mean_amp = mean_,
          se_amp = se_) 
+
+
 
 # Figures
 
@@ -474,56 +537,170 @@ by_scene_ratings_with_path <- ratings_data %>%
   mutate(path = paste0("/home/andrewf/Research_data/EEG/Pic_Vid/Stimuli/matt_diss/Pics/", 
                        Stim_name, ".jpg"))
 
-by_scene_ratings_with_path %>% 
-  filter(Stim_type == "Pics") %>% 
-  ggplot(aes(mean_aro, mean_val)) +
-  geom_point(aes(color = Stim_cat)) +
-  scale_x_continuous(breaks = seq(1, 9, by = 1),
-                     limits = c(1,9),
-                     name = "Arousal") +
-  scale_y_continuous(breaks = seq(1, 9, by = 1),
-                     limits = c(1,9),
-                     name = "Valence") +
-  scale_color_manual(values = c("blue1", "black", "red1")) +
-  theme_classic()
+# video by picture figures
 
+arousal_by_modality <- by_scene_ratings_with_path %>% 
+  pivot_wider(id_cols = c("Stim_name", "path"),
+              names_from = Stim_type, 
+              values_from = mean_aro)
 
-img <- readJPEG(test_path)
-img <- rasterGrob(img, interpolate=TRUE)
-
-
-test_path <- "/home/andrewf/Research_data/EEG/Pic_Vid/Stimuli/matt_diss/Pics/Avalanche.jpg"
-
-df <- data.frame(x = c(1, 2, 3), y = c(1, 2, 3))
-p <- ggplot(df, aes(x, y)) +
-  geom_blank() +
-  xlim(0, 4) +
-  ylim(0, 4) + 
-  theme_classic()
-
-p <- p + annotation_custom(img, xmin = 2 -.2, xmax =2 +.2, ymin = 2 -.2, ymax =2 +.2)
-
-# Sample data frame
-df <- data.frame(x = c(1, 2, 3), y = c(1, 2, 3))
-
-# Basic scatter plot setup
-p <- ggplot(df, aes(x, y)) +
-  geom_blank() +
-  xlim(0, 4) +
-  ylim(0, 4)
-
-# Loop over each point to add a different image
-for (i in 1:nrow(df)) {
-  img_path <- paste0("path/to/image", i, ".png") # Adjust this path
-  img <- readPNG(img_path)
-  img <- rasterGrob(img, interpolate=TRUE)
+valence_by_modality <- by_scene_ratings_with_path %>% 
+  pivot_wider(id_cols = c("Stim_name", "path"),
+              names_from = Stim_type, 
+              values_from = mean_val)
   
-  p <- p + annotation_custom(img, xmin=df$x[i]-0.2, xmax=df$x[i]+0.2, ymin=df$y[i]-0.2, ymax=df$y[i]+0.2)
+arousal_raster <- arousal_by_modality %>% 
+  ggplot(aes(Pics, Video)) +
+  geom_blank() +
+  geom_line(data = data.frame(x = seq(1,9,by =.1), y = seq(1,9,by =.1)),
+            aes(x, y), linetype = "dashed") + 
+  scale_x_continuous(breaks = seq(2, 8, by = 1),
+                     limits = c(2.5,8.5),
+                     expand = c(0,0),
+                     name = "Scene Arousal Rating") +
+  scale_y_continuous(breaks = seq(2, 8, by = 1),
+                     limits = c(2.5,8.5),
+                     expand = c(0,0),
+                     name = "Video Arousal Rating") +
+  theme_classic()
+
+
+for (i in 1:90) {
+  img <- arousal_by_modality$path[i] %>% 
+    readJPEG() %>% 
+    rasterGrob(interpolate=TRUE)
+  
+  arousal_raster <- arousal_raster + 
+    annotation_custom(img, 
+                      xmin = arousal_by_modality$Pics[i] -.15, 
+                      xmax = arousal_by_modality$Pics[i] +.15, 
+                      ymin = arousal_by_modality$Video[i] -.15, 
+                      ymax = arousal_by_modality$Video[i] +.15)
+  print(i)
 }
 
-# Show the plot
-print(p)
+jpeg(filename = paste0(parent_directory, "/misc/arousal_raster.jpg"),
+     width = 8, height = 8, units = "in", res = 300)
+arousal_raster
+dev.off()
 
+valence_raster <- valence_by_modality %>% 
+  ggplot(aes(Pics, Video)) +
+  geom_blank() +
+  geom_line(data = data.frame(x = seq(1,9,by =.1), y = seq(1,9,by =.1)),
+            aes(x, y), linetype = "dashed") + 
+  scale_x_continuous(breaks = seq(2, 8, by = 1),
+                     limits = c(2.5,8.5),
+                     expand = c(0,0),
+                     name = "Scene Valence Rating") +
+  scale_y_continuous(breaks = seq(2, 8, by = 1),
+                     limits = c(2.5,8.5),
+                     expand = c(0,0),
+                     name = "Video Valence Rating") +
+  theme_classic()
+
+
+for (i in 1:90) {
+  img <- valence_by_modality$path[i] %>% 
+    readJPEG() %>% 
+    rasterGrob(interpolate=TRUE)
+  
+  valence_raster <- valence_raster + 
+    annotation_custom(img, 
+                      xmin = valence_by_modality$Pics[i] -.15, 
+                      xmax = valence_by_modality$Pics[i] +.15, 
+                      ymin = valence_by_modality$Video[i] -.15, 
+                      ymax = valence_by_modality$Video[i] +.15)
+  print(i)
+}
+
+jpeg(filename = paste0(parent_directory, "/misc/valence_raster.jpg"),
+     width = 8, height = 8, units = "in", res = 300)
+valence_raster
+dev.off()
+
+# arousal predict lpp or ssvep stats and plots ####
+
+
+
+#arousal by valence figures
+
+
+by_picture_raster <- by_scene_ratings_with_path %>% 
+  filter(Stim_type == "Pics") %>% 
+  ggplot(aes(mean_aro, mean_val)) +
+  geom_blank() +
+  scale_x_continuous(breaks = seq(2, 9, by = 1),
+                     limits = c(2,9),
+                     name = "Arousal") +
+  scale_y_continuous(breaks = seq(2, 9, by = 1),
+                     limits = c(2,9),
+                     name = "Valence") +
+  theme_classic()
+
+img_paths <- by_scene_ratings_with_path %>% 
+  filter(Stim_type == "Pics") %>% 
+  pull(path)
+
+just_picture_ratings <- by_scene_ratings_with_path %>% 
+  filter(Stim_type == "Pics")
+
+for (i in 1:90) {
+img <- img_paths[i] %>% 
+  readJPEG() %>% 
+  rasterGrob(interpolate=TRUE)
+
+by_picture_raster <- by_picture_raster + 
+  annotation_custom(img, 
+                    xmin = just_picture_ratings$mean_aro[i] -.15, 
+                    xmax = just_picture_ratings$mean_aro[i] +.15, 
+                    ymin = just_picture_ratings$mean_val[i] -.15, 
+                    ymax = just_picture_ratings$mean_val[i] +.15)
+print(i)
+}
+
+jpeg(filename = paste0(parent_directory, "/misc/pic_raster_scatter.jpg"),
+     width = 8, height = 8, units = "in", res = 300)
+by_picture_raster
+dev.off()
+
+by_video_raster <- by_scene_ratings_with_path %>% 
+  filter(Stim_type == "Video") %>% 
+  ggplot(aes(mean_aro, mean_val)) +
+  geom_blank() +
+  scale_x_continuous(breaks = seq(2, 9, by = 1),
+                     limits = c(2,9),
+                     name = "Arousal") +
+  scale_y_continuous(breaks = seq(2, 9, by = 1),
+                     limits = c(2,9),
+                     name = "Valence") +
+  theme_classic()
+
+img_paths <- by_scene_ratings_with_path %>% 
+  filter(Stim_type == "Video") %>% 
+  pull(path)
+
+just_video_ratings <- by_scene_ratings_with_path %>% 
+  filter(Stim_type == "Video")
+
+for (i in 1:90) {
+  img <- img_paths[i] %>% 
+    readJPEG() %>% 
+    rasterGrob(interpolate=TRUE)
+  
+  by_video_raster <- by_video_raster + 
+    annotation_custom(img, 
+                      xmin = just_video_ratings$mean_aro[i] -.15, 
+                      xmax = just_video_ratings$mean_aro[i] +.15, 
+                      ymin = just_video_ratings$mean_val[i] -.15, 
+                      ymax = just_video_ratings$mean_val[i] +.15)
+  print(i)
+}
+
+jpeg(filename = paste0(parent_directory, "/misc/video_raster_scatter.jpg"),
+     width = 8, height = 8, units = "in", res = 300)
+by_video_raster
+dev.off()
 
 
 ## ERP category
@@ -649,7 +826,7 @@ AAAAABBB
 CCCCCBBB
 "
 
-jpeg(filename = paste0(parent_directory, "/misc/cat_GM_erp_results"),
+jpeg(filename = paste0(parent_directory, "/misc/cat_GM_erp_results.jpg"),
      width = 15, height = 10, units = "in", res = 300)
 lpp_cat_wave_plot + gm_amp_dot_plot + ssvep_cat_wave_plot +
   plot_layout(design = layout)
