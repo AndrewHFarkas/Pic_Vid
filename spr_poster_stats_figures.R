@@ -292,9 +292,6 @@ lpp_scene_dat <- lpp_scene_dat %>%
   group_by(par_id) %>% 
   mutate(zscore_lpp_amp = as.numeric(scale(lpp_amp)))
 
-
-# change next lines
-
 pic_id_key <- read.csv(paste0(parent_directory, "/misc/Picture_id_number.csv"))
 
 lpp_scene_dat <- merge(x = lpp_scene_dat, 
@@ -302,7 +299,6 @@ lpp_scene_dat <- merge(x = lpp_scene_dat,
                        by.x = "scene_id", 
                        by.y = "con_id", 
                        all.x = T)
-
 
 
 # Add necessary information and merge
