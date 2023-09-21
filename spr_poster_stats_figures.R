@@ -2,6 +2,8 @@ library(tidyverse)
 library(patchwork) #for combining plots
 library(plotrix) #for calculating standard error
 
+# Set up ####
+
 # Andrew's last know location of data in sabat lab
 sabat_data_folder <- "/Volumes/startech3TB_bkup/research_data/Pic_Vid"
 andrew_data_folder <- "/home/andrewf/Research_data/EEG/Pic_Vid"
@@ -53,7 +55,7 @@ bad_participants <- c(9,38)
 pic_vid_trial_data <- pic_vid_trial_data %>% 
   filter(!par_id %in% c(no_pictures, no_videos))
 
-# Number of good trials
+# Number of good trials ####
 number_of_good_trials <- tribble(
   ~ par_id, ~number_of_good_trials_pictures, ~number_of_good_trials_video,
   1, 77,69,
@@ -119,7 +121,7 @@ pic_vid_trial_data %>%
 #           quote = F,row.names = F)
 
 
-# Demographics
+# Demographics ####
 demographic_information <- read.csv(paste0(parent_directory, "/misc/Participant_data.csv")) %>% 
   mutate(par_id = 1:50, .before = 1) %>% 
   select(-Par_id) %>% 
@@ -131,7 +133,7 @@ demographic_information %>% pull(sex) %>% table()
 
 demographic_information %>% pull(race.ethnicity) %>% table()
 
-# Valence Arousal
+# Ratings data ####
 ratings_data <- read.csv(paste0(parent_directory, "/misc/ratings_by_par_by_scene.csv")) %>% 
   mutate(par_id = stringr::str_extract(Par_id, "\\d+") %>% as.numeric(),
          .before = 1) %>% 
@@ -143,9 +145,10 @@ ratings_data <- read.csv(paste0(parent_directory, "/misc/ratings_by_par_by_scene
                                       "Unpleasant")))
 
 
-# Load in video hamp and scene LPP data
+# Load in ssVEP LPP ####
 
-# 9 channels more parietal
+## Sensors used ####
+# 9 channels more parietal 
 lpp_chans <- c(34, #CCP1H
                39, #CP1
                95, #CZ
@@ -169,8 +172,8 @@ occipital_chans <- c(56, # POz
                      127,# OI2h
                      128)# O10/I2
 
-
-#lpp 400ms 279pt - 900ms 526pt
+## Load in category ERPs ####
+# lpp 400ms 279pt - 900ms 526pt
 start_time_ms <- -125
 number_of_time_points <- 1089
 sample_rate_hz <- 512
@@ -214,7 +217,7 @@ lpp_cat_wave <- lpp_cat_wave %>%
 
   
 
-#ssvep 1000ms 1537pt - 9000ms 5633pt
+# ssVEP 1000ms 1537pt - 9000ms 5633pt
 start_time_ms <- -2000
 number_of_time_points <- 6146
 sample_rate_hz <- 512
@@ -254,8 +257,9 @@ ssvep_cat_wave <- ssvep_cat_wave %>%
   select(time_ms, category, amp) %>% 
   arrange(category, time_ms)
 
-# ssvep by video
-# 
+## Load by video/scene ERPs####
+# ssVEP by video
+ 
 load(paste0(parent_directory,"/misc/by_video.RData"))
 
 by_video_ssvep_amp <- by_scene_info %>% 
@@ -301,7 +305,7 @@ lpp_scene_dat <- merge(x = lpp_scene_dat,
                        all.x = T)
 
 
-# Add necessary information and merge
+# Consolidate and merge data####
 lpp_cat_dat <- lpp_cat_dat %>% 
   reframe(par_id = stringr::str_extract(lpp_cat_dat$file_name, "\\d+") %>% as.numeric(),
           cat_id = stringr::str_extract(lpp_cat_dat$file_name, "(\\d+)(?!.*\\d)") %>% as.numeric(),
@@ -378,7 +382,7 @@ by_scene_ratings_with_path <- ratings_data %>%
 ratings_erps_path_by_scene <- merge(gm_erp_by_scene, y = by_scene_ratings_with_path,
                                     by.x = c("Stim_type", "scene"), by.y = c("Stim_type", "Stim_name"))
 
-# Stats
+# ANOVAs and correlations####
 afex::aov_ez(id = "par_id", 
              dv = "zscore_ssvep_amp", 
              within = "category", 
@@ -458,9 +462,9 @@ cor.test(
   y =ratings_erps_path_by_scene[ratings_erps_path_by_scene$Stim_type == "Video",]$mean_val
 )
 
-# Figures
+# Figures####
 
-## ratings
+## Category rating dot plot####
 dot_size <- 7
 dodge_size <- .7
 text_size <- 20
@@ -602,13 +606,13 @@ guide_area() + arousal_plot + valence_plot +
   plot_layout(design = layout,guides = "collect")
 dev.off()
 
-## By scene ratings (trying to have each point be a picture)
+## By scene figures ####
 library(grid)
 library(jpeg)
 
 
 
-# video by picture figures
+### Video x picture ratings scatter####
 
 arousal_by_modality <- by_scene_ratings_with_path %>% 
   pivot_wider(id_cols = c("Stim_name", "path"),
@@ -690,7 +694,7 @@ jpeg(filename = paste0(parent_directory, "/misc/valence_raster.jpg"),
 valence_raster
 dev.off()
 
-# arousal predict lpp or ssvep stats and plots ####
+### Arousal X LPP and ssVEP plots ####
 
 arousal_lpp_raster <- ratings_erps_path_by_scene %>% 
   filter(Stim_type == "Pics") %>% 
@@ -765,15 +769,7 @@ arousal_ssvep_raster + geom_smooth(method = "lm", color = "black")
 dev.off()
 
 
-
-   
-  
-
-
-
-
-#arousal by valence figures
-
+### Arousal X valence figures ####
 
 by_picture_raster <- by_scene_ratings_with_path %>% 
   filter(Stim_type == "Pics") %>% 
@@ -852,7 +848,9 @@ by_video_raster
 dev.off()
 
 
-## ERP category
+## ERP category waveform and dot plot ####
+
+### ERP dot plot ####
 y_axis_breaks <- seq(-.8, .6, by = .2)
 y_axis_limits <- c(-1,.8)
 text_size = 20
@@ -910,7 +908,7 @@ gm_amp_dot_plot
 #           quote = F, 
 #           row.names = F)
 
-# ERP waveforms
+### ERP waveforms ####
 line_width <- 2
 line_outline <- .5
 
@@ -940,7 +938,6 @@ lpp_cat_wave_plot <- lpp_cat_wave %>%
         axis.ticks = element_blank(),
         axis.text = element_text(color = "black"))
 
-# lpp_cat_wave_plot
 
 ssvep_cat_wave_plot <- ssvep_cat_wave %>% 
   ggplot() +
@@ -966,9 +963,6 @@ ssvep_cat_wave_plot <- ssvep_cat_wave %>%
         axis.ticks = element_blank(),
         axis.text = element_text(color = "black"))
 
-# ssvep_cat_wave_plot
-
-
 
 layout <- "
 AAAAABBB
@@ -982,16 +976,6 @@ lpp_cat_wave_plot + gm_amp_dot_plot + ssvep_cat_wave_plot +
 dev.off()
 
 
-
-
-
-
-# jpeg(filename = "/home/andrewf/Research_data/EEG/EEGface_128_channel_UGA/misc/RQ3_figure1.jpg",
-#      width = 15, height = 10, units = "in", res = 300)
-# uga_wave_n170_epn + um_wave_n170_epn + n170_uga_dot_plots + epn_uga_dot_plots + n170_um_dot_plots + epn_um_dot_plots +
-#   uga_wave_lpp + um_wave_lpp + lpp_uga_dot_plots + lpp_um_dot_plots + guide_area() +
-#   plot_layout(design = layout, guides = "collect")
-# dev.off()
 
 
 # Old below
