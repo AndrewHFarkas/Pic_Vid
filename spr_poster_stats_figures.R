@@ -274,16 +274,16 @@ by_video_ssvep_amp <- by_scene_info %>%
   filter(!par_id %in% bad_participants)
 
 # lpp by scene
-
 lpp_scene_dat <- EMEGShelper::read_ar_files(data_folders = picture_by_scene_ar_directory,
-                                          patterns = ".ar$",
-                                          baseline_pts = c(14:65),
-                                          select_time_points = c(279:526),
-                                          average_channels = T,
-                                          average_timepoints = T,
-                                          include_file_name = T,
-                                          extract_channels = lpp_chans) %>% 
+                                            patterns = ".ar$",
+                                            baseline_pts = c(14:65),
+                                            select_time_points = c(279:526),
+                                            average_channels = T,
+                                            average_timepoints = T,
+                                            include_file_name = T,
+                                            extract_channels = lpp_chans) %>% 
   rename(amp = V1)
+
 
 lpp_scene_dat <- lpp_scene_dat %>% 
   reframe(par_id = stringr::str_extract(file_name, "\\d+") %>% as.numeric(),
@@ -292,10 +292,18 @@ lpp_scene_dat <- lpp_scene_dat %>%
   group_by(par_id) %>% 
   mutate(zscore_lpp_amp = as.numeric(scale(lpp_amp)))
 
-lpp_scene_dat <- by_scene_info %>% 
-  select(scene_id_con_num, scene) %>% 
-  merge(y = lpp_scene_dat, by.x = "scene_id_con_num", by.y = "scene_id", all.y = T) %>% 
-  rename(scene_id = scene_id_con_num)
+
+# change next lines
+
+pic_id_key <- read.csv(paste0(parent_directory, "/misc/Picture_id_number.csv"))
+
+lpp_scene_dat <- merge(x = lpp_scene_dat, 
+                       y = pic_id_key, 
+                       by.x = "scene_id", 
+                       by.y = "con_id", 
+                       all.x = T)
+
+
 
 # Add necessary information and merge
 lpp_cat_dat <- lpp_cat_dat %>% 
@@ -346,14 +354,15 @@ gm_by_video_ssvep_amp <- by_video_ssvep_amp %>%
          .before = 1)
 
 gm_lpp_scene_dat <- lpp_scene_dat %>% 
+  reframe(scene = picture,
+          lpp_amp = lpp_amp,
+          zscore_lpp_amp = zscore_lpp_amp) %>% 
   group_by(scene) %>% 
-  select(-par_id) %>% 
   summarise_all(mean) %>% 
   mutate(Stim_type = factor("Pics",
                             levels = c("Pics",
                                        "Video")),
-         .before = 1) %>% 
-  select(-scene_id)
+         .before = 1)
 
 
 gm_erp_by_scene <- rbind.data.frame(rename(gm_by_video_ssvep_amp,
@@ -458,6 +467,9 @@ cor.test(
 ## ratings
 dot_size <- 7
 dodge_size <- .7
+text_size <- 20
+axis_line_thickness <- 2
+
 
 gm_ratings_long <- ratings_data %>% 
   group_by(Stim_cat,Stim_type) %>% 
