@@ -339,14 +339,39 @@ ssvep_lpp_dat_by_participant <- lpp_cat_dat %>%
 gm_by_video_ssvep_amp <- by_video_ssvep_amp %>% 
   group_by(scene) %>% 
   select(-par_id) %>% 
-  summarise_all(mean)
+  summarise_all(mean) %>% 
+  mutate(Stim_type = factor("Video",
+                            levels = c("Pics",
+                                       "Video")),
+         .before = 1)
 
 gm_lpp_scene_dat <- lpp_scene_dat %>% 
   group_by(scene) %>% 
   select(-par_id) %>% 
-  summarise_all(mean)
-  
+  summarise_all(mean) %>% 
+  mutate(Stim_type = factor("Pics",
+                            levels = c("Pics",
+                                       "Video")),
+         .before = 1) %>% 
+  select(-scene_id)
 
+
+gm_erp_by_scene <- rbind.data.frame(rename(gm_by_video_ssvep_amp,
+                                           "amp" = ssvep_amp,
+                                           "zscore_amp" = zscore_ssvep_amp),
+                                    rename(gm_lpp_scene_dat,
+                                           "amp" = lpp_amp,
+                                           "zscore_amp" = zscore_lpp_amp))
+
+by_scene_ratings_with_path <- ratings_data %>% 
+  group_by(Stim_name, Stim_type, Stim_cat) %>% 
+  summarise(mean_aro = mean(arousal),
+            mean_val = mean(valence)) %>% 
+  mutate(path = paste0("/home/andrewf/Research_data/EEG/Pic_Vid/Stimuli/matt_diss/Pics/", 
+                       Stim_name, ".jpg"))  
+
+ratings_erps_path_by_scene <- merge(gm_erp_by_scene, y = by_scene_ratings_with_path,
+                                    by.x = c("Stim_type", "scene"), by.y = c("Stim_type", "Stim_name"))
 
 # Stats
 afex::aov_ez(id = "par_id", 
@@ -383,7 +408,50 @@ gm_amp_long <- gm_ssvep_lpp %>%
   rename(mean_amp = mean_,
          se_amp = se_) 
 
+ratings_erps_path_by_scene %>% 
+  filter(Stim_type == "Pics") %>% 
+  lm(data = ., formula = amp ~ mean_aro) %>% 
+  summary()
 
+cor.test(
+  x = ratings_erps_path_by_scene[ratings_erps_path_by_scene$Stim_type == "Pics",]$amp,
+  y =ratings_erps_path_by_scene[ratings_erps_path_by_scene$Stim_type == "Pics",]$mean_aro
+)
+
+cor.test(
+  x = ratings_erps_path_by_scene[ratings_erps_path_by_scene$Stim_type == "Pics",]$zscore_amp,
+  y =ratings_erps_path_by_scene[ratings_erps_path_by_scene$Stim_type == "Pics",]$mean_aro
+)
+
+cor.test(
+  x = ratings_erps_path_by_scene[ratings_erps_path_by_scene$Stim_type == "Video",]$amp,
+  y =ratings_erps_path_by_scene[ratings_erps_path_by_scene$Stim_type == "Video",]$mean_aro
+)
+
+cor.test(
+  x = ratings_erps_path_by_scene[ratings_erps_path_by_scene$Stim_type == "Video",]$zscore_amp,
+  y =ratings_erps_path_by_scene[ratings_erps_path_by_scene$Stim_type == "Video",]$mean_aro
+)
+
+cor.test(
+  x = ratings_erps_path_by_scene[ratings_erps_path_by_scene$Stim_type == "Pics",]$amp,
+  y =ratings_erps_path_by_scene[ratings_erps_path_by_scene$Stim_type == "Pics",]$mean_val
+)
+
+cor.test(
+  x = ratings_erps_path_by_scene[ratings_erps_path_by_scene$Stim_type == "Pics",]$zscore_amp,
+  y =ratings_erps_path_by_scene[ratings_erps_path_by_scene$Stim_type == "Pics",]$mean_val
+)
+
+cor.test(
+  x = ratings_erps_path_by_scene[ratings_erps_path_by_scene$Stim_type == "Video",]$amp,
+  y =ratings_erps_path_by_scene[ratings_erps_path_by_scene$Stim_type == "Video",]$mean_val
+)
+
+cor.test(
+  x = ratings_erps_path_by_scene[ratings_erps_path_by_scene$Stim_type == "Video",]$zscore_amp,
+  y =ratings_erps_path_by_scene[ratings_erps_path_by_scene$Stim_type == "Video",]$mean_val
+)
 
 # Figures
 
@@ -530,12 +598,7 @@ dev.off()
 library(grid)
 library(jpeg)
 
-by_scene_ratings_with_path <- ratings_data %>% 
-  group_by(Stim_name, Stim_type, Stim_cat) %>% 
-  summarise(mean_aro = mean(arousal),
-            mean_val = mean(valence)) %>% 
-  mutate(path = paste0("/home/andrewf/Research_data/EEG/Pic_Vid/Stimuli/matt_diss/Pics/", 
-                       Stim_name, ".jpg"))
+
 
 # video by picture figures
 
@@ -620,6 +683,84 @@ valence_raster
 dev.off()
 
 # arousal predict lpp or ssvep stats and plots ####
+
+arousal_lpp_raster <- ratings_erps_path_by_scene %>% 
+  filter(Stim_type == "Pics") %>% 
+  ggplot(aes(mean_aro, amp)) +
+  geom_blank() +
+  scale_x_continuous(breaks = seq(3, 8, by = 1),
+                     limits = c(3,8),
+                     expand = c(0,0),
+                     name = "Scene Arousal Rating") +
+  scale_y_continuous(limits = c(-3.5,4.5),
+                     breaks = seq(-3, 4, by = 1),
+                     expand = c(0,0),
+                     name = "LPP Microvoltage") +
+  theme_classic()
+
+picture_modality <- ratings_erps_path_by_scene %>% 
+  filter(Stim_type == "Pics")
+
+for (i in 1:90) {
+  img <- picture_modality$path[i] %>% 
+    readJPEG() %>% 
+    rasterGrob(interpolate=TRUE)
+  
+  arousal_lpp_raster <- arousal_lpp_raster + 
+    annotation_custom(img, 
+                      xmin = picture_modality$mean_aro[i] -.15, 
+                      xmax = picture_modality$mean_aro[i] +.15, 
+                      ymin = picture_modality$amp[i] -.15, 
+                      ymax = picture_modality$amp[i] +.15)
+  print(i)
+}
+
+jpeg(filename = paste0(parent_directory, "/misc/arousal_lpp_raster.jpg"),
+     width = 8, height = 8, units = "in", res = 300)
+arousal_lpp_raster  + geom_smooth(method = "lm", color = "black")
+dev.off()
+
+arousal_ssvep_raster <- ratings_erps_path_by_scene %>% 
+  filter(Stim_type == "Video") %>% 
+  ggplot(aes(mean_aro, amp)) +
+  geom_blank() +
+  scale_x_continuous(breaks = seq(3, 8, by = 1),
+                     limits = c(3,8),
+                     expand = c(0,0),
+                     name = "Video Arousal Rating") +
+  scale_y_continuous(limits = c(.86, 1.151),
+                     breaks = seq(.875, 1.125, by = .025),
+                     expand = c(0,0),
+                     name = "ssVEP Hilbert Amplitude") +
+  theme_classic()
+
+video_modality <- ratings_erps_path_by_scene %>% 
+  filter(Stim_type == "Video")
+
+for (i in 1:90) {
+  img <- video_modality$path[i] %>% 
+    readJPEG() %>% 
+    rasterGrob(interpolate=TRUE)
+  
+  arousal_ssvep_raster <- arousal_ssvep_raster + 
+    annotation_custom(img, 
+                      xmin = video_modality$mean_aro[i] -.15, 
+                      xmax = video_modality$mean_aro[i] +.15, 
+                      ymin = video_modality$amp[i] -.15, 
+                      ymax = video_modality$amp[i] +.15)
+  print(i)
+}
+
+jpeg(filename = paste0(parent_directory, "/misc/arousal_ssvep_raster.jpg"),
+     width = 8, height = 8, units = "in", res = 300)
+arousal_ssvep_raster + geom_smooth(method = "lm", color = "black")
+dev.off()
+
+
+
+   
+  
+
 
 
 
