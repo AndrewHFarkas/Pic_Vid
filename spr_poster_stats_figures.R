@@ -128,6 +128,7 @@ demographic_information <- read.csv(paste0(parent_directory, "/misc/Participant_
   filter(!par_id %in% bad_participants)
 
 demographic_information %>% pull(age) %>% summary()
+demographic_information %>% pull(age) %>% sd(na.rm = T)
 
 demographic_information %>% pull(sex) %>% table()
 
@@ -401,6 +402,105 @@ ssvep_lpp_dat_by_participant %>%
   afex::aov_ez(id = "par_id", dv = "value", within = c("category", "name")) %>% 
   summary()
 
+# Do arousal x modality interaction by picture?
+
+afex::aov_ez(id = "scene", 
+             data = ratings_erps_path_by_scene, 
+             within = c("Stim_type", "mean_aro"), 
+             dv = "zscore_amp")
+
+lm_rating_erp_result <- ratings_erps_path_by_scene %>% 
+  mutate(zscore_amp = case_when(
+    Stim_type == "Video" ~ -1*zscore_amp,
+    Stim_type == "Pics" ~ zscore_amp
+  )) %>% 
+  lm(zscore_amp ~ scene + Stim_type + mean_aro + mean_aro*Stim_type, data = .)
+
+reduced_model <-  ratings_erps_path_by_scene %>% 
+  mutate(zscore_amp = case_when(
+    Stim_type == "Video" ~ -1*zscore_amp,
+    Stim_type == "Pics" ~ zscore_amp
+  )) %>%
+  lm(zscore_amp ~ scene + Stim_type + mean_aro, data = .)
+
+
+anova(lm_rating_erp_result)
+
+# Sum of squares for the full and reduced models
+ss_total <- sum((ratings_erps_path_by_scene$zscore_amp - mean(ratings_erps_path_by_scene$zscore_amp))^2)
+ss_full <- sum(resid(lm_rating_erp_result)^2)
+ss_reduced <- sum(resid(reduced_model)^2)
+
+# Calculate the sum of squares for the interaction
+ss_interaction = ss_reduced - ss_full
+
+# Calculate generalized eta-squared
+eta_g_squared = ss_interaction / (ss_interaction + ss_total)
+
+ratings_erps_path_by_scene %>% 
+  mutate(amp = case_when(
+    Stim_type == "Video" ~ -1*amp,
+    Stim_type == "Pics" ~ amp
+  )) %>% 
+  lm(amp ~ mean_aro*Stim_type, data = .) %>% 
+  summary()
+
+# Ratings interaction with stimulus modatily
+# ANOVA probably unnecessary 
+ratings_erps_path_by_scene %>% 
+  afex::aov_ez(data = . , 
+               dv = "mean_aro", 
+               within = "Stim_type", 
+               id = "scene") %>% 
+  summary()
+
+ratings_erps_path_by_scene %>% 
+  afex::aov_ez(data = . , 
+               dv = "mean_val", 
+               within = "Stim_type", 
+               id = "scene") %>% 
+  summary()
+
+t.test(
+  ratings_erps_path_by_scene %>% 
+         filter(Stim_type == "Pics") %>% 
+         pull(mean_aro),
+  ratings_erps_path_by_scene %>% 
+         filter(Stim_type == "Video") %>% 
+         pull(mean_aro),
+  paired = T)
+
+effsize::cohen.d(
+  ratings_erps_path_by_scene %>% 
+         filter(Stim_type == "Pics") %>% 
+         pull(mean_aro),
+  ratings_erps_path_by_scene %>% 
+         filter(Stim_type == "Video") %>% 
+         pull(mean_aro),
+  paired = T)
+
+t.test(
+  ratings_erps_path_by_scene %>% 
+         filter(Stim_type == "Pics") %>% 
+         pull(mean_val),
+  ratings_erps_path_by_scene %>% 
+         filter(Stim_type == "Video") %>% 
+         pull(mean_val),
+  paired = T)
+
+effsize::cohen.d(
+  ratings_erps_path_by_scene %>% 
+         filter(Stim_type == "Pics") %>% 
+         pull(mean_val),
+  ratings_erps_path_by_scene %>% 
+         filter(Stim_type == "Video") %>% 
+         pull(mean_val),
+  paired = T)
+
+
+
+
+
 gm_ssvep_lpp <- ssvep_lpp_dat_by_participant %>% 
   group_by(category) %>% 
   summarise(mean_zscore_lpp   = mean(zscore_lpp_amp, na.rm = T),
@@ -627,8 +727,6 @@ valence_by_modality <- by_scene_ratings_with_path %>%
 arousal_raster <- arousal_by_modality %>% 
   ggplot(aes(Pics, Video)) +
   geom_blank() +
-  geom_line(data = data.frame(x = seq(1,9,by =.1), y = seq(1,9,by =.1)),
-            aes(x, y), linetype = "dashed") + 
   scale_x_continuous(breaks = seq(2, 8, by = 1),
                      limits = c(2.5,8.5),
                      expand = c(0,0),
@@ -637,7 +735,12 @@ arousal_raster <- arousal_by_modality %>%
                      limits = c(2.5,8.5),
                      expand = c(0,0),
                      name = "Video Arousal Rating") +
-  theme_classic()
+  theme_classic() +
+  theme(text = element_text(size = text_size, family = "Arial", face = "bold"),
+        axis.line = element_line(size = axis_line_thickness),
+        axis.ticks = element_blank(),
+        axis.text = element_text(color = "black"),
+        legend.position = "none")
 
 
 for (i in 1:90) {
@@ -656,14 +759,22 @@ for (i in 1:90) {
 
 jpeg(filename = paste0(parent_directory, "/misc/arousal_raster.jpg"),
      width = 8, height = 8, units = "in", res = 300)
-arousal_raster
+arousal_raster + 
+  geom_line(data = data.frame(x = seq(1,9,by =.1), 
+                              y = seq(1,9,by =.1)),
+            aes(x, y), linetype = "dashed", alpha = .9, 
+            linewidth = axis_line_thickness) +
+  annotate("text", x = 4.25, y = 8,
+           label = "Video More Arousing", size = 10) +
+  annotate("text", x = 4, y = 7,
+           label = "Paired T-Test\nt(89) = 5.8, p < .001\nD = .19", size = 8) +
+  annotate("text", x = 6.75, y = 3,
+           label = "Scene More Arousing", size = 10)
 dev.off()
 
 valence_raster <- valence_by_modality %>% 
   ggplot(aes(Pics, Video)) +
   geom_blank() +
-  geom_line(data = data.frame(x = seq(1,9,by =.1), y = seq(1,9,by =.1)),
-            aes(x, y), linetype = "dashed") + 
   scale_x_continuous(breaks = seq(2, 8, by = 1),
                      limits = c(2.5,8.5),
                      expand = c(0,0),
@@ -672,7 +783,12 @@ valence_raster <- valence_by_modality %>%
                      limits = c(2.5,8.5),
                      expand = c(0,0),
                      name = "Video Valence Rating") +
-  theme_classic()
+  theme_classic() +
+  theme(text = element_text(size = text_size, family = "Arial", face = "bold"),
+        axis.line = element_line(size = axis_line_thickness),
+        axis.ticks = element_blank(),
+        axis.text = element_text(color = "black"),
+        legend.position = "none")
 
 
 for (i in 1:90) {
@@ -691,10 +807,25 @@ for (i in 1:90) {
 
 jpeg(filename = paste0(parent_directory, "/misc/valence_raster.jpg"),
      width = 8, height = 8, units = "in", res = 300)
-valence_raster
+valence_raster + 
+  geom_line(data = data.frame(x = seq(1,9,by =.1), 
+                              y = seq(1,9,by =.1)),
+            aes(x, y), linetype = "dashed", alpha = .9, 
+            linewidth = axis_line_thickness) +
+  annotate("text", x = 4.25, y = 8,
+           label = "Video More Pleasant", size = 10) +
+  annotate("text", x = 4, y = 7,
+           label = "Paired T-Test\nt(89) = 2.1, p = .04\nD = .04", size = 8) +
+  annotate("text", x = 6.75, y = 3,
+           label = "Scene More Pleasant", size = 10)
 dev.off()
 
 ### Arousal X LPP and ssVEP plots ####
+dot_size <- 7
+dodge_size <- .7
+text_size = 20
+axis_line_thickness <- 2
+
 
 arousal_lpp_raster <- ratings_erps_path_by_scene %>% 
   filter(Stim_type == "Pics") %>% 
@@ -704,11 +835,16 @@ arousal_lpp_raster <- ratings_erps_path_by_scene %>%
                      limits = c(3,8),
                      expand = c(0,0),
                      name = "Scene Arousal Rating") +
-  scale_y_continuous(limits = c(-3.5,4.5),
-                     breaks = seq(-3, 4, by = 1),
+  scale_y_continuous(limits = c(-3.5,6.5),
+                     breaks = seq(-3, 6, by = 1),
                      expand = c(0,0),
                      name = "LPP Microvoltage") +
-  theme_classic()
+  theme_classic() +
+  theme(text = element_text(size = text_size, family = "Arial", face = "bold"),
+        axis.line = element_line(size = axis_line_thickness),
+        axis.ticks = element_blank(),
+        axis.text = element_text(color = "black"),
+        legend.position = "none")
 
 picture_modality <- ratings_erps_path_by_scene %>% 
   filter(Stim_type == "Pics")
@@ -729,7 +865,15 @@ for (i in 1:90) {
 
 jpeg(filename = paste0(parent_directory, "/misc/arousal_lpp_raster.jpg"),
      width = 8, height = 8, units = "in", res = 300)
-arousal_lpp_raster  + geom_smooth(method = "lm", color = "black")
+arousal_lpp_raster  + 
+  geom_line(stat = "smooth", method = "lm", aes(group = 1), 
+            alpha = .5, se = F, color = "black", linewidth = axis_line_thickness) +
+  geom_ribbon(stat = "smooth", method = "lm",
+              aes(ymin = ..y.. - (1.96 * ..se..), # make 95% CI
+                  ymax = ..y.. + (1.96 * ..se..)), 
+              alpha = .2, color = "black", linetype = "blank") +
+  annotate("text", x = 4.5, y = 5.75,
+           label = "r(88) = .51, p < .001", size = 10)
 dev.off()
 
 arousal_ssvep_raster <- ratings_erps_path_by_scene %>% 
@@ -741,10 +885,15 @@ arousal_ssvep_raster <- ratings_erps_path_by_scene %>%
                      expand = c(0,0),
                      name = "Video Arousal Rating") +
   scale_y_continuous(limits = c(.86, 1.151),
-                     breaks = seq(.875, 1.125, by = .025),
+                     breaks = seq(.875, 1.150, by = .025),
                      expand = c(0,0),
                      name = "ssVEP Hilbert Amplitude") +
-  theme_classic()
+  theme_classic() +
+  theme(text = element_text(size = text_size, family = "Arial", face = "bold"),
+                       axis.line = element_line(size = axis_line_thickness),
+                       axis.ticks = element_blank(),
+                       axis.text = element_text(color = "black"),
+                       legend.position = "none")
 
 video_modality <- ratings_erps_path_by_scene %>% 
   filter(Stim_type == "Video")
@@ -765,7 +914,119 @@ for (i in 1:90) {
 
 jpeg(filename = paste0(parent_directory, "/misc/arousal_ssvep_raster.jpg"),
      width = 8, height = 8, units = "in", res = 300)
-arousal_ssvep_raster + geom_smooth(method = "lm", color = "black")
+arousal_ssvep_raster + 
+  geom_line(stat = "smooth", method = "lm", aes(group = 1), 
+            alpha = .5, se = F, color = "black", linewidth = axis_line_thickness) +
+  geom_ribbon(stat = "smooth", method = "lm",
+              aes(ymin = ..y.. - (1.96 * ..se..), # make 95% CI
+                  ymax = ..y.. + (1.96 * ..se..)), 
+              alpha = .2, color = "black", linetype = "blank") +
+  annotate("text", x = 6.5, y = 1.137,
+           label = "r(88) = .67, p < .001", size = 10)
+dev.off()
+### Zscore Arousal X LPP and ssVEP plots ####
+dot_size <- 7
+dodge_size <- .7
+text_size = 20
+axis_line_thickness <- 2
+
+
+arousal_lpp_raster <- ratings_erps_path_by_scene %>% 
+  filter(Stim_type == "Pics") %>% 
+  ggplot(aes(mean_aro, zscore_amp)) +
+  geom_blank() +
+  scale_x_continuous(breaks = seq(3, 8, by = 1),
+                     limits = c(3,8),
+                     expand = c(0,0),
+                     name = "Scene Arousal Rating") +
+  scale_y_continuous(limits = c(-.85,1.05),
+                     breaks = seq(-.75,1, by = .25),
+                     expand = c(0,0),
+                     name = "LPP Z-scored Amplitude") +
+  theme_classic() +
+  theme(text = element_text(size = text_size, family = "Arial", face = "bold"),
+        axis.line = element_line(size = axis_line_thickness),
+        axis.ticks = element_blank(),
+        axis.text = element_text(color = "black"),
+        legend.position = "none")
+
+picture_modality <- ratings_erps_path_by_scene %>% 
+  filter(Stim_type == "Pics")
+
+for (i in 1:90) {
+  img <- picture_modality$path[i] %>% 
+    readJPEG() %>% 
+    rasterGrob(interpolate=TRUE)
+  
+  arousal_lpp_raster <- arousal_lpp_raster + 
+    annotation_custom(img, 
+                      xmin = picture_modality$mean_aro[i] -.15, 
+                      xmax = picture_modality$mean_aro[i] +.15, 
+                      ymin = picture_modality$zscore_amp[i] -.15, 
+                      ymax = picture_modality$zscore_amp[i] +.15)
+  print(i)
+}
+
+jpeg(filename = paste0(parent_directory, "/misc/zarousal_lpp_raster.jpg"),
+     width = 8, height = 8, units = "in", res = 300)
+arousal_lpp_raster  + 
+  geom_line(stat = "smooth", method = "lm", aes(group = 1), 
+            alpha = .5, se = F, color = "black", linewidth = axis_line_thickness) +
+  geom_ribbon(stat = "smooth", method = "lm",
+              aes(ymin = ..y.. - (1.96 * ..se..), # make 95% CI
+                  ymax = ..y.. + (1.96 * ..se..)), 
+              alpha = .2, color = "black", linetype = "blank") +
+  annotate("text", x = 4.5, y = .87,
+           label = "r(88) = .52, p < .001", size = 10)
+dev.off()
+
+arousal_ssvep_raster <- ratings_erps_path_by_scene %>% 
+  filter(Stim_type == "Video") %>% 
+  ggplot(aes(mean_aro, -1*zscore_amp)) +
+  geom_blank() +
+  scale_x_continuous(breaks = seq(3, 8, by = 1),
+                     limits = c(3,8),
+                     expand = c(0,0),
+                     name = "Video Arousal Rating") +
+  scale_y_continuous(limits = c(-.85,1.05),
+                     breaks = seq(-.75,1, by = .25),
+                     expand = c(0,0),
+                     name = "ssVEP Z-scored Amplitude") +
+  theme_classic() +
+  theme(text = element_text(size = text_size, family = "Arial", face = "bold"),
+                       axis.line = element_line(size = axis_line_thickness),
+                       axis.ticks = element_blank(),
+                       axis.text = element_text(color = "black"),
+                       legend.position = "none")
+
+video_modality <- ratings_erps_path_by_scene %>% 
+  filter(Stim_type == "Video")
+
+for (i in 1:90) {
+  img <- video_modality$path[i] %>% 
+    readJPEG() %>% 
+    rasterGrob(interpolate=TRUE)
+  
+  arousal_ssvep_raster <- arousal_ssvep_raster + 
+    annotation_custom(img, 
+                      xmin = video_modality$mean_aro[i] -.15, 
+                      xmax = video_modality$mean_aro[i] +.15, 
+                      ymin = (-1*video_modality$zscore_amp[i]) -.15, 
+                      ymax = (-1*video_modality$zscore_amp[i]) +.15)
+  print(i)
+}
+
+jpeg(filename = paste0(parent_directory, "/misc/zarousal_ssvep_raster.jpg"),
+     width = 8, height = 8, units = "in", res = 300)
+arousal_ssvep_raster + 
+  geom_line(stat = "smooth", method = "lm", aes(group = 1), 
+            alpha = .5, se = F, color = "black", linewidth = axis_line_thickness) +
+  geom_ribbon(stat = "smooth", method = "lm",
+              aes(ymin = ..y.. - (1.96 * ..se..), # make 95% CI
+                  ymax = ..y.. + (1.96 * ..se..)), 
+              alpha = .2, color = "black", linetype = "blank") +
+  annotate("text", x = 4.5, y = .87,
+           label = "r(88) = .63, p < .001", size = 10)
 dev.off()
 
 
@@ -875,7 +1136,7 @@ gm_amp_dot_plot <- ggplot(gm_amp_long) +
                       color = category),
                   position = position_dodge(width = 0.4),
                   size = 2, linewidth = 2) + 
-  annotate("text", x = 2, y = 0.5, label = "Stimulus X Valence\nF(2,94) = 2.23, p = .12;\nηg2 = .023", size = 8) +
+  annotate("text", x = 1.95, y = 0.45, label = "Stimulus X Valence\nF(2,94) = 2.23, p = .12;\nηg2 = .023", size = 8) +
   scale_y_continuous(breaks = y_axis_breaks,
                      name = "Scene Z-score",
                      limits = y_axis_limits,
@@ -914,13 +1175,13 @@ line_outline <- .5
 
 lpp_cat_wave_plot <- lpp_cat_wave %>% 
   ggplot() +
-  geom_line(data = data.frame(x = c(0,0), y = c(-Inf, .9)), aes(x = x, y = y), linetype = "dashed") +
+  geom_line(data = data.frame(x = c(0,0), y = c(-Inf, .8)), aes(x = x, y = y), linetype = "dashed") +
   geom_rect(aes(xmin = 400, xmax = 900, ymin = -Inf, ymax = Inf),
             fill = "lightgray")+
   geom_line(aes(x = time_ms, y = amp, group = category),
             color = "black",
             linewidth = line_width + line_outline) +
-  annotate("text", x = 140, y = 1.3, face = "bold",
+  annotate("text", x = 140, y = 1.15, face = "bold",
            label = "Scene Evoked LPP\nF(2,94) = 49.03, p < .001;\n ηg2 = .511", size = 8) +
   geom_line(aes(x = time_ms, y = amp, color = category),
             linewidth = line_width) +
@@ -942,7 +1203,7 @@ lpp_cat_wave_plot <- lpp_cat_wave %>%
 ssvep_cat_wave_plot <- ssvep_cat_wave %>% 
   ggplot() +
   geom_vline(aes(xintercept = 0), linetype = "dashed") +
-  geom_rect(aes(xmin = 1000, xmax = 9000, ymin = -Inf, ymax = 1.2),
+  geom_rect(aes(xmin = 1000, xmax = 9000, ymin = -Inf, ymax = 1.19),
             fill = "lightgray")+
   geom_line(aes(x = time_ms, y = amp, group = category),
             color = "black",
@@ -970,7 +1231,7 @@ CCCCCBBB
 "
 
 jpeg(filename = paste0(parent_directory, "/misc/cat_GM_erp_results.jpg"),
-     width = 15, height = 10, units = "in", res = 300)
+     width = 15, height = 8, units = "in", res = 300)
 lpp_cat_wave_plot + gm_amp_dot_plot + ssvep_cat_wave_plot +
   plot_layout(design = layout)
 dev.off()
