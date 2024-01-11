@@ -40,6 +40,8 @@ Once the EditAEM is up from either clicking "EditAEM processed file" or typing i
 
 Now you can press "Abs MaxStd Grad" button and if you pressed the "EditAEM processed file" from PrePro another window asking if you would like to use the files from the clipboard pop up, select yes. If you closed PrePro and typed EditAEM into the terminal then you will have to press the "User Defined" button and manually select all of the files that end with ".AEM.AR" files. 
 
+Do not use the auto feature, it will not work, you need to drag the slider to .25 for every file.
+
 # Step 4 - adjusting_condition_file
 
 Each particiapnt needs to have a .ses.con file that shows the order of the stimuli. This file copies 'master' condition files and copies them into the correct participants folder to average correctly. 
@@ -68,8 +70,12 @@ The R document for this step loads in the individual hamp files and then average
 
 This MATLAB code uses EMEGS functions to create the csv as a series of average files. It will create an average file for each category by each participant.
 
-# Step - 10 Analysis and figures
+# Step - 10 Stan model fitting
 
-Future code will be used to analyze the final results and to generate figures.
+In the second half of the manuscript, the data will be looked at by-trial via 2 Stan Bayesian multi-level models. Here the data is organized an the models are fit. Currently there is a lot in this script because I tried many different models. Final models will be model003 (multi-level category prediction) and model007 (multi-level arousal rating prediction)
+
+# Step - 11 Manuscript statistics and figures
+
+Here is where all the final analyses and figure will be written for the manuscript.
 
 

@@ -7,31 +7,6 @@ library(gganimate)
 library(ggthemes)
 
 
-# Main ideas here ####
-# Work on the data by trial
-# First few figures show the raw data and ratings by scene/video
-# Then I'll need to double-check that set order didn't change anything
-# See if baseline ssVEP period changes anything
-# Will also likely need to look at all the low-level features of videos
-# The main analysis plan is to describe the data via Bayesian 
-# multi-level models
-
-# First model will look at category effects
-# It will have a random effect of participant, category, and interaction
-# First I want to describe the difference in the random effect of participant
-# by lpp and ssVEP. I expect there to be a larger but more stable difference
-# for the ssVEP
-# Next I want to look at the category effect for each measure, I expect these
-# to be similar like the z-scored data. 
-# Lastly, I should explore interaction effects. I think the interaction term
-# will be a matrix. I think I would look to see if the size of participant
-# random effect relates to size of emotional difference. So like Par effect on
-# x-axis and emotion effect on y.
-
-# The second model will look at how well arousal predicts ERP amplitude
-# I specifically want to see if the correlation is higher for each participant
-# and plot the residuals to show how LPP under-preforms for erotic content
-
 # Load and tidy data ####
 ## All this data prep should be shorted and put in its own script
 
