@@ -383,6 +383,27 @@ by_scene_ratings_with_path <- ratings_data %>%
 ratings_erps_path_by_scene <- merge(gm_erp_by_scene, y = by_scene_ratings_with_path,
                                     by.x = c("Stim_type", "scene"), by.y = c("Stim_type", "Stim_name"))
 
+lpp_scene_dat_ratings <- merge(x = lpp_scene_dat, y = ratings_data[ratings_data$Stim_type == "Pics",], 
+      by.x = c("picture","par_id"), by.y = c("Stim_name", "par_id"))
+
+by_video_ssvep_amp_ratings <- merge(x = by_video_ssvep_amp, y = ratings_data[ratings_data$Stim_type == "Video",], 
+      by.x = c("scene","par_id"), by.y = c("Stim_name", "par_id"))
+
+# write.csv(ssvep_cat_dat,
+#           quote = F,
+#           row.names = F,
+#           file = "/home/andrewf/Research_data/EEG/Pic_Vid/misc/ssvep_cat_dat.csv")
+# 
+# write.csv(lpp_cat_dat,
+#           quote = F,
+#           row.names = F,
+#           file = "/home/andrewf/Research_data/EEG/Pic_Vid/misc/lpp_cat_dat.csv")
+# 
+# write.csv(ratings_erps_path_by_scene,
+#           quote = F,
+#           row.names = F,
+#           file = "/home/andrewf/Research_data/EEG/Pic_Vid/misc/ratings_erps_path_by_scene.csv")
+
 # ANOVAs and correlations####
 afex::aov_ez(id = "par_id", 
              dv = "zscore_ssvep_amp", 
@@ -561,6 +582,89 @@ cor.test(
   x = ratings_erps_path_by_scene[ratings_erps_path_by_scene$Stim_type == "Video",]$zscore_amp,
   y =ratings_erps_path_by_scene[ratings_erps_path_by_scene$Stim_type == "Video",]$mean_val
 )
+
+
+
+
+# Not for poster
+cor.test(
+  x = ratings_erps_path_by_scene[ratings_erps_path_by_scene$Stim_type == "Pics",]$amp,
+  y = ratings_erps_path_by_scene[ratings_erps_path_by_scene$Stim_type == "Video",]$amp
+)
+
+cor.test(
+  x = ratings_erps_path_by_scene[ratings_erps_path_by_scene$Stim_type == "Pics",]$zscore_amp,
+  y = ratings_erps_path_by_scene[ratings_erps_path_by_scene$Stim_type == "Video",]$zscore_amp
+)
+
+cor.test(
+  x = ratings_erps_path_by_scene[ratings_erps_path_by_scene$Stim_type == "Pics",]$amp,
+  y = ratings_erps_path_by_scene[ratings_erps_path_by_scene$Stim_type == "Pics",]$mean_aro
+)
+
+cor.test(
+  x = ratings_erps_path_by_scene[ratings_erps_path_by_scene$Stim_type == "Pics",]$zscore_amp,
+  y = ratings_erps_path_by_scene[ratings_erps_path_by_scene$Stim_type == "Pics",]$mean_aro
+)
+
+cor.test(
+  x = ratings_erps_path_by_scene[ratings_erps_path_by_scene$Stim_type == "Video",]$amp,
+  y = ratings_erps_path_by_scene[ratings_erps_path_by_scene$Stim_type == "Video",]$mean_aro
+)
+
+cor.test(
+  x = ratings_erps_path_by_scene[ratings_erps_path_by_scene$Stim_type == "Video",]$zscore_amp,
+  y = ratings_erps_path_by_scene[ratings_erps_path_by_scene$Stim_type == "Video",]$mean_aro
+)
+
+
+lpp_arousal_by_par_cor <- lpp_scene_dat_ratings %>% 
+  group_by(par_id) %>% 
+  summarise(r_value = cor.test(lpp_amp, arousal)$estimate)
+
+ssvep_arousal_by_par_cor <- by_video_ssvep_amp_ratings %>% 
+  group_by(par_id) %>% 
+  summarise(r_value = cor.test(ssvep_amp, arousal)$estimate)
+
+zlpp_arousal_by_par_cor <- lpp_scene_dat_ratings %>% 
+  group_by(par_id) %>% 
+  summarise(r_value = cor.test(zscore_lpp_amp, arousal)$estimate)
+
+zssvep_arousal_by_par_cor <- by_video_ssvep_amp_ratings %>% 
+  group_by(par_id) %>% 
+  summarise(r_value = cor.test(zscore_ssvep_amp, arousal)$estimate)
+
+erp_arousal_corrs <- data.frame(par_id = lpp_arousal_by_par_cor$par_id,
+                                lpp_arousal = lpp_arousal_by_par_cor$r_value,
+                                zlpp_arousal = zlpp_arousal_by_par_cor$r_value,
+                                ssvep_arousal = ssvep_arousal_by_par_cor$r_value,
+                                zssvep_arousal = zssvep_arousal_by_par_cor$r_value)
+
+write.csv(erp_arousal_corrs,
+          quote = F,
+          row.names = F,
+          file = "/home/andrewf/Research_data/EEG/Pic_Vid/misc/erp_arousal_corrs.csv")
+
+erp_corrs_by_scene <- merge(x = lpp_scene_dat, y = by_video_ssvep_amp,
+      by.x = c("par_id", "picture"), by.y = c("par_id", "scene")) %>% 
+  group_by(par_id) %>% 
+  summarise(r_value = cor.test(lpp_amp, ssvep_amp)$estimate)
+
+z_erp_corrs_by_scene <- merge(x = lpp_scene_dat, y = by_video_ssvep_amp,
+      by.x = c("par_id", "picture"), by.y = c("par_id", "scene")) %>% 
+  group_by(par_id) %>% 
+  summarise(r_value = cor.test(zscore_lpp_amp, zscore_ssvep_amp)$estimate)
+
+erp_corr_stats <- data.frame(par_id = erp_corrs_by_scene$par_id,
+                                lpp_ssvep = erp_corrs_by_scene$r_value,
+                                zlpp_ssvep = z_erp_corrs_by_scene$r_value)
+
+write.csv(erp_corr_stats,
+          quote = F,
+          row.names = F,
+          file = "/home/andrewf/Research_data/EEG/Pic_Vid/misc/erp_corr_stats.csv")
+
+lpp_arousal_corrs %>% colMeans()
 
 # Figures####
 

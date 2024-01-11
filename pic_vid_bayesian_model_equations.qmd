@@ -1,0 +1,112 @@
+---
+title: "Picture Video Bayesian Models"
+format: html
+---
+
+## Model 1: Multilevel participant and stimuli predictors {style="text-align: center;"}
+
+$$
+\begin{gather}
+Where \ ( i ) \ indexes \ all \ observations, ( j ) \ indexes \ participants,\\ 
+and \ ( k ) \ indexes \ stimuli.
+\end{gather}
+$$
+
+### Linear model {style="text-align: center;"}
+
+$$
+\begin{gather}
+Amplitude_{[i]} \sim Normal(\mu_{[i]},\sigma) \tag{1}\\
+\mu_{[i]} = \beta_{par[i]} + \beta_{stim[i]} \tag{2}
+\end{gather}
+$$
+
+### Adaptive regularizing priors {style="text-align: center;"}
+
+$$
+\begin{gather}
+\beta_{par[j]} \sim Normal(\hat{\bar{par}}, \sigma_{par}) \tag{3}\\
+\beta_{stim[k]} \sim Normal(0, \sigma_{stim}) \tag{4}
+\end{gather}
+$$
+
+### Uninformative weak priors {style="text-align: center;"}
+
+$$
+\begin{gather}
+\hat{\bar{par}} \sim Normal(\bar{par},2 \cdot SD(Amplitude)) \tag{5}\\
+\sigma,\sigma_{par},\sigma_{stim} \sim HalfNormal(0,2 \cdot SD(Amplitude)) \tag{6}
+\end{gather}
+$$
+
+## Model 2: Multilevel participant and arousal predictors {style="text-align: center;"}
+
+$$
+\begin{gather}
+Where \ ( i ) \ indexes \ all \ observations\\ and ( j ) \ indexes \ participants.
+\end{gather}
+$$
+
+### Linear model {style="text-align: center;"}
+
+$$
+\begin{gather}
+Amplitude_{[i]} \sim Normal(\mu_{[i]},\sigma) \tag{1}\\
+\mu_{[i]} = \beta_{par[i]} + \beta arousal_{par[i]} \cdot Arousal_{[i]} \tag{2}
+\end{gather}
+$$
+
+### Adaptive regularizing priors {style="text-align: center;"}
+
+$$
+\begin{gather}
+\beta_{par[j]} \sim Normal(\hat{\bar{par}}, \sigma_{par})  \tag{3}\\
+\beta arousal_{par[j]} \sim Normal(\bar{aro \ cov}, \sigma_{aro})  \tag{4}
+\end{gather}
+$$
+
+### Uninformative weak priors {style="text-align: center;"}
+
+$$
+\begin{gather}
+\hat{\bar{par}} \sim Normal(\bar{par},2 \cdot SD(Amplitude)) \tag{5}\\
+\bar{aro \ cov} \sim Normal(0, 2 \cdot SD(Amplitude)) \tag{6}\\
+\sigma,\sigma_{par},\sigma_{aro} \sim HalfNormal(0,2 \cdot SD(Amplitude)) \tag{7}
+\end{gather}
+$$
+
+## Model 3: Multilevel participant and stimuli predictors {style="text-align: center;"}
+
+$$
+\begin{gather}
+Where \ ( i ) \ indexes \ all \ observations, ( j ) \ indexes \ participants,\\ 
+and \ ( k ) \ indexes \ stimuli.
+\end{gather}
+$$
+
+### Linear model {style="text-align: center;"}
+
+$$
+\begin{gather}
+Amplitude_{[i]} \sim Normal(\mu_{[i]},\sigma) \tag{1}\\
+\mu_{[i]} = \beta_{par[i]} + \beta_{stim[i]} \tag{2}
+\end{gather}
+$$
+
+### Adaptive regularizing priors {style="text-align: center;"}
+
+$$
+\begin{gather}
+\beta_{par[j]} \sim Normal(\hat{\bar{par}}, \sigma_{par}) \tag{3}\\
+\beta_{stim[k]} \sim Normal(0, \sigma_{stim}) \tag{4}
+\end{gather}
+$$
+
+### Uninformative weak priors {style="text-align: center;"}
+
+$$
+\begin{gather}
+\hat{\bar{par}} \sim Normal(\bar{par},2 * SD(Amplitude)) \tag{5}\\
+\sigma,\sigma_{par},\sigma_{stim} \sim HalfNormal(0,2 * SD(Amplitude)) \tag{6}
+\end{gather}
+$$
