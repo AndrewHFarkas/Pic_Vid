@@ -66,14 +66,18 @@ if (dir.exists(sabat_data_folder)) {
   stop("Something is wrong, are you working on the right computer with access to the data")
 }
 
-# Load data and models
 
-## Data
+# Load data and models ####
+
+## By category data ####
+
 load(paste0(parent_directory,
             "/paper_data_models/data/pic_vid_paper.RData"))
 
-## Models and draws
-load(paste0(parent_directory,"/paper_data_models/models/models.RData"))
+
+
+## Models and draws ####
+load(paste0(parent_directory,"/paper_data_models/models/paper_models.RData"))
 
 model003_lpp_fit <- model003_lpp_fit$output_files() %>% 
   basename() %>% 
@@ -121,6 +125,22 @@ model007_ssvep_fit_loo <- model007_ssvep_fit$loo()
 model009_lpp_fit_loo <- model009_lpp_fit$loo()
 model009_ssvep_fit_loo <- model009_ssvep_fit$loo()
 
+loo::loo_compare(model003_lpp_fit_loo,
+                 model007_lpp_fit_loo,
+                 model009_lpp_fit_loo)
+
+loo::loo_model_weights(list(model003_lpp_fit_loo,
+                            model007_lpp_fit_loo,
+                            model009_lpp_fit_loo))
+
+loo::loo_compare(model003_ssvep_fit_loo,
+                 model007_ssvep_fit_loo,
+                 model009_ssvep_fit_loo)
+
+loo::loo_model_weights(list(model003_ssvep_fit_loo,
+                            model007_ssvep_fit_loo,
+                            model009_ssvep_fit_loo))
+
 model003_lpp_fit_draws <- model003_lpp_fit$draws(format = "df")
 model003_ssvep_fit_draws <- model003_ssvep_fit$draws(format = "df")
 model007_lpp_fit_draws <- model007_lpp_fit$draws(format = "df")
@@ -138,7 +158,7 @@ model009_ssvep_fit_draws <- model009_ssvep_fit$draws(format = "df")
 # z-score category means, z-score correlations by arousal and against 
 # each other?
 
-# Figure 4 are the model 003, 007, 009 equations
+# Figure 4 are the model 003, 007 equations
 
 # Figure 5 is raw data, participant mean posteriors, and category posteriors,
 # and posterior predictive?
@@ -711,6 +731,145 @@ model007_ssvep_fit_draws %>%
                   )) +
   plot_layout(guides = "collect", design = corr_layout)
 
+
+# by scene posteriors
+
+labeling_df <- data_for_stan_df %>% 
+  group_by(stim, stim_name, cate) %>% 
+  summarise(n()) %>% 
+  ungroup() %>% 
+  mutate(erotica = if_else(str_starts(stim_name, "Coup"), T, F)) %>% 
+  print(n = 90)
+
+model003_lpp_fit_draws %>% 
+  select(starts_with("bstim")) %>%
+  pivot_longer(cols = everything()) %>% 
+  mutate(name = factor(name,
+                       levels = unique(name))) %>% 
+  group_by(name) %>% 
+  # mutate(
+  #   percent_above_zero = (sum(value > 0) / n())*100,
+  #   above_99_percent = factor(percent_above_zero >= 0.99,
+  #                             levels = c("TRUE","FALSE"))) %>%
+  ungroup() %>% 
+  ggplot() +
+  # geom_vline(aes(xintercept = 0),
+  #            linewidth = line_thickness)+
+  geom_density_ridges(aes(x = value, 
+                          y = name#,
+                          # fill = percent_above_zero
+                          ),
+                      alpha = 0.8,
+                      rel_min_height = 0.01,
+                      size = density_line_thickness,
+                      scale = par_pos_scale) +
+  # scale_x_continuous(name = "Standardized Beta",
+  #                    breaks = seq(-.1, .3, by = .1),
+  #                    labels = seq(-.1, .3, by = .1)) +
+  scale_y_discrete(expand = c(0,0), name = "Stimuli") +
+  # scale_fill_gradient2(low = "#D55E00",mid = "#F0E442", high = "#009E73", 
+  #                      midpoint = 97.5, limit = c(95, 100),
+  #                      space = "Lab", name= "Probabilty greater than zero") +
+  # coord_cartesian(xlim = c(-.1, .3),
+  #                 ylim = cor_pos_y_limits) +
+  ggtitle("LPP") +
+  theme_classic() +
+  theme(#axis.title.y = element_blank(),
+    axis.text.y = element_blank(),
+    axis.text.x = element_text(color = "black",
+                               margin = margin(t = 5, 
+                                               unit = "pt")),
+    axis.ticks.y = element_blank(),
+    axis.ticks.x = element_blank(),
+    line = element_line(linewidth = line_thickness,
+                        lineend = "square"),
+    text = element_text(size = font_size,
+                        color = "black"),
+    plot.title = element_text(hjust = 0.5,
+                              face = "bold"),
+    legend.title = element_text(face = "bold"),
+    legend.position = "bottom", 
+    legend.text = element_text(angle = 0),
+    legend.title.align = 0,
+    legend.background = element_blank(),
+    legend.key = element_blank()
+  ) + 
+  guides(    fill = guide_colorbar(
+    title.position = "top",
+    title.hjust = 0.5,
+    barwidth = 25, # Adjust the width as needed
+    barheight = 1.5 # Adjust the height as needed
+  )) +
+  
+  
+  model003_ssvep_fit_draws %>% 
+  select(starts_with("bstim")) %>%
+  pivot_longer(cols = everything()) %>% 
+  mutate(name = factor(name,
+                       levels = unique(name))) %>% 
+  group_by(name) %>% 
+  # mutate(
+  #   percent_above_zero = (sum(value > 0) / n())*100,
+  #   above_99_percent = factor(percent_above_zero >= 0.99,
+  #                             levels = c("TRUE","FALSE"))) %>%
+  ungroup() %>% 
+  ggplot() +
+  # geom_vline(aes(xintercept = 0),
+  #            linewidth = line_thickness)+
+  geom_density_ridges(aes(x = value, 
+                          y = name#,
+                          # fill = percent_above_zero
+  ),
+  alpha = 0.8,
+  rel_min_height = 0.01,
+  size = density_line_thickness,
+  scale = par_pos_scale) +
+  # scale_x_continuous(name = "Standardized Beta",
+  #                    breaks = seq(-.1, .3, by = .1),
+  #                    labels = seq(-.1, .3, by = .1)) +
+  scale_y_discrete(expand = c(0,0), name = "Stimuli") +
+  # scale_fill_gradient2(low = "#D55E00",mid = "#F0E442", high = "#009E73", 
+  #                      midpoint = 97.5, limit = c(95, 100),
+  #                      space = "Lab", name= "Probabilty greater than zero") +
+  # coord_cartesian(xlim = c(-.1, .3),
+  #                 ylim = cor_pos_y_limits) +
+  ggtitle("ssVEP") +
+  theme_classic() +
+  theme(axis.title.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.text.x = element_text(color = "black",
+                                   margin = margin(t = 5, 
+                                                   unit = "pt")),
+        axis.ticks.y = element_blank(),
+        axis.ticks.x = element_blank(),
+        line = element_line(linewidth = line_thickness,
+                            lineend = "square"),
+        text = element_text(size = font_size,
+                            color = "black"),
+        plot.title = element_text(hjust = 0.5,
+                                  face = "bold"),
+        legend.title = element_text(face = "bold"),
+        legend.position = "bottom", 
+        legend.text = element_text(angle = 0),
+        legend.title.align = 0,
+        legend.background = element_blank(),
+        legend.key = element_blank()
+  ) + 
+  guides(    fill = guide_colorbar(
+    title.position = "top",
+    title.hjust = 0.5,
+    barwidth = 25, # Adjust the width as needed
+    barheight = 1.5 # Adjust the height as needed
+  )) +
+  guide_area() +
+  plot_annotation(title = "Amplitude predicted by arousal per trial",
+                  theme = theme(
+                    plot.title = element_text(size = font_size + 5,
+                                              color = "black",
+                                              hjust = 0.5,
+                                              face = "bold")
+                  )) +
+  plot_layout(guides = "collect", design = corr_layout)
 
 
 

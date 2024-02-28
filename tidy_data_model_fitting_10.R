@@ -472,6 +472,9 @@ data_for_stan_df <- data.frame(
                                        par %in% saw_pics_first ~ 2))
 
 
+data_for_stan_df$par <- data_for_stan_df$par %>% 
+  as.factor() %>% 
+  as.integer()
 
 data_list_for_stan_lpp <- list()
 data_list_for_stan_ssvep <- list()
@@ -524,8 +527,13 @@ data_list_for_stan_ssvep$arousal = data_for_stan_df[data_for_stan_df$type == 2,]
 
 
 
-# Data used for paper_stats_figures_11
-save(data_for_stan_df,
+# Data used for paper_stats_figures_11 ####
+
+
+save(ssvep_lpp_dat_by_participant,
+     ratings_erps_path_by_scene,
+     gm_
+     data_for_stan_df, 
      file = paste0(parent_directory,
                    "/paper_data_models/data/pic_vid_paper.RData"))
 
@@ -969,7 +977,7 @@ model008_lpp_fit <- model008$sample(
   show_messages = T,
   output_dir = paste0(parent_directory,"/paper_data_models/models/chains"),
   chains = number_of_chains, 
-  parallel_chains = number_of_chains)
+  parallel_chains = number_of_parallel_chains)
 
 
 model008_ssvep_fit <- model008$sample(
@@ -982,7 +990,7 @@ model008_ssvep_fit <- model008$sample(
   show_messages = T,
   output_dir = paste0(parent_directory,"/paper_data_models/models/chains"),
   chains = number_of_chains, 
-  parallel_chains = number_of_chains)
+  parallel_chains = number_of_parallel_chains)
 
 
 model008_lpp_fit_meta_data <- model008_lpp_fit$metadata()
@@ -1019,7 +1027,7 @@ model009_lpp_fit <- model009$sample(
   show_messages = T,
   output_dir = paste0(parent_directory,"/paper_data_models/models/chains"),
   chains = number_of_chains, 
-  parallel_chains = number_of_chains)
+  parallel_chains = number_of_parallel_chains)
 
 
 model009_ssvep_fit <- model009$sample(
@@ -1032,7 +1040,7 @@ model009_ssvep_fit <- model009$sample(
   show_messages = T,
   output_dir = paste0(parent_directory,"/paper_data_models/models/chains"),
   chains = number_of_chains, 
-  parallel_chains = number_of_chains)
+  parallel_chains = number_of_parallel_chains)
 
 
 model009_lpp_fit_meta_data <- model009_lpp_fit$metadata()
