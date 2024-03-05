@@ -5,7 +5,8 @@ library(plotrix)
 library(ggbeeswarm)
 library(gganimate)
 library(ggthemes)
-
+#package used for anova
+library(afex)
 
 # Load and tidy data ####
 ## All this data prep should be shorted and put in its own script
@@ -273,6 +274,48 @@ ssvep_cat_dat <- EMEGShelper::read_ar_files(data_folders = video_by_cat_director
                                             extract_channels = occipital_chans) %>% 
   rename(amp = V1)
 
+# Baselined ssVEP 1000ms 1537pt - 9000ms 5633pt
+## Baseline -1000ms 513pt - 0ms 1025pt
+ssvep_cat_dat_base <- EMEGShelper::read_ar_files(data_folders = video_by_cat_directory,
+                                                 patterns = ".hamp8$",
+                                                 select_time_points = c(1537:5633),
+                                                 baseline_pts = c(513:1025),
+                                                 average_channels = T,
+                                                 average_timepoints = T,
+                                                 include_file_name = T,
+                                                 extract_channels = occipital_chans) %>% 
+  rename(amp = V1)
+
+#save .csv files 
+where_to_save_ssvep_cat_dat <- "/Volumes/startech3TB_bkup/research_data/Pic_Vid"
+write.csv(ssvep_cat_dat, where_to_save_ssvep_cat_dat, row.names = F) 
+write.csv(ssvep_cat_dat_base, where_to_save_ssvep_cat_dat, row.names = F) 
+##anova compare raw and baseline dat
+par_id <- 1:50 %>%
+  .[!. %in% c(9,38)]%>%
+  rep(each = 3, time = 2)
+emo_cat <-  rep(c("plesant","neutral","unpleasant"),time = 96)
+baseline_cat <- 1:2%>%
+  rep(each = 144)
+amp_raw_z <- scale(ssvep_cat_dat$amp,center = T, scale = T)
+amp_base_z <- scale(ssvep_cat_dat_base$amp)
+amp_z <- c(amp_raw_z, amp_base_z)
+amp <- c(ssvep_cat_dat$amp, ssvep_cat_dat_base$amp)
+anova_raw_base_dat <- data.frame(id = par_id, emo_cat = emo_cat, baseline_cat = baseline_cat, amp = amp, amp_z = amp_z)
+write.csv(anova_raw_base_dat, "/Volumes/startech3TB_bkup/research_data/Pic_Vid/anova_raw_base_dat.csv", row.names = F) 
+aov_emo_base_amp <- afex::aov_ez(id = "id",
+                                data = anova_raw_base_dat,
+                                within = c("emo_cat","baseline_cat"),
+                                dv = "amp")
+summary(aov_emo_base)
+aov_emo_base_amp_z <- afex::aov_ez(id = "id",
+                                 data = anova_raw_base_dat,
+                                 within = c("emo_cat","baseline_cat"),
+                                 dv = "amp_z")
+summary(aov_emo_base_amp_z)
+
+
+##
 ssvep_cat_wave <- EMEGShelper::read_ar_files(data_folders = video_by_cat_wave_directory,
                                              patterns = ".ar$",
                                              average_channels = T,
