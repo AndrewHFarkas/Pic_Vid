@@ -222,13 +222,13 @@ lpp_time_key <- data.frame(time_pt = 1:number_of_time_points) %>%
          V_time_pt = paste0("V", time_pt))
 
 lpp_cat_dat <- EMEGShelper::read_ar_files(data_folders = picture_by_cat_ar_directory,
-                                          patterns = ".ar$",
-                                          baseline_pts = c(14:65),
-                                          select_time_points = c(279:526),
-                                          average_channels = T,
-                                          average_timepoints = T,
-                                          include_file_name = T,
-                                          extract_channels = lpp_chans) %>% 
+                             patterns = ".ar$",
+                             baseline_pts = c(14:65),
+                             select_time_points = c(279:526),
+                             average_channels = T,
+                             average_timepoints = T,
+                             include_file_name = T,
+                             extract_channels = lpp_chans) %>% 
   rename(amp = V1)
 
 lpp_cat_wave <- EMEGShelper::read_ar_files(data_folders = picture_by_cat_wave_directory,

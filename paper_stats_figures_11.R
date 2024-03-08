@@ -118,6 +118,14 @@ model009_ssvep_fit <- model009_ssvep_fit$output_files() %>%
          .) %>% 
   as_cmdstan_fit()
 
+model003_lpp_fit_draws <- model003_lpp_fit$draws(format = "df")
+model003_ssvep_fit_draws <- model003_ssvep_fit$draws(format = "df")
+model007_lpp_fit_draws <- model007_lpp_fit$draws(format = "df")
+model007_ssvep_fit_draws <- model007_ssvep_fit$draws(format = "df")
+model009_lpp_fit_draws <- model009_lpp_fit$draws(format = "df")
+model009_ssvep_fit_draws <- model009_ssvep_fit$draws(format = "df")
+
+
 model003_lpp_fit_loo <- model003_lpp_fit$loo()
 model003_ssvep_fit_loo <- model003_ssvep_fit$loo()
 model007_lpp_fit_loo <- model007_lpp_fit$loo()
@@ -141,18 +149,12 @@ loo::loo_model_weights(list(model003_ssvep_fit_loo,
                             model007_ssvep_fit_loo,
                             model009_ssvep_fit_loo))
 
-model003_lpp_fit_draws <- model003_lpp_fit$draws(format = "df")
-model003_ssvep_fit_draws <- model003_ssvep_fit$draws(format = "df")
-model007_lpp_fit_draws <- model007_lpp_fit$draws(format = "df")
-model007_ssvep_fit_draws <- model007_ssvep_fit$draws(format = "df")
-model009_lpp_fit_draws <- model009_lpp_fit$draws(format = "df")
-model009_ssvep_fit_draws <- model009_ssvep_fit$draws(format = "df")
 
 
 
-# Figure 1 is the paradigm already made
+# Figure 1 is the paradigm already made ####
 
-# Figure 2 is by category and by scene ratings
+# Figure 2 is by category and by scene ratings ####
 
 # Figure 3 is by category waveforms, raw category means per participant?,
 # z-score category means, z-score correlations by arousal and against 
