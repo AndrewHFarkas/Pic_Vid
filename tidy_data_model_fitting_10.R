@@ -294,25 +294,47 @@ write.csv(ssvep_cat_dat_base, where_to_save_ssvep_cat_dat, row.names = F)
 par_id <- 1:50 %>%
   .[!. %in% c(9,38)]%>%
   rep(each = 3, time = 2)
-emo_cat <-  rep(c("plesant","neutral","unpleasant"),time = 96)
+emo_cat <-  rep(c("pleasant","neutral","unpleasant"),time = 96)
 baseline_cat <- 1:2%>%
   rep(each = 144)
-amp_raw_z <- scale(ssvep_cat_dat$amp,center = T, scale = T)
-amp_base_z <- scale(ssvep_cat_dat_base$amp)
-amp_z <- c(amp_raw_z, amp_base_z)
+# We need to scale (z-score) within each participant and baseline (yes or no)
+# amp_raw_z <- scale(ssvep_cat_dat$amp,center = T, scale = T)
+# amp_base_z <- scale(ssvep_cat_dat_base$amp)
+# amp_z <- c(amp_raw_z, amp_base_z)
 amp <- c(ssvep_cat_dat$amp, ssvep_cat_dat_base$amp)
-anova_raw_base_dat <- data.frame(id = par_id, emo_cat = emo_cat, baseline_cat = baseline_cat, amp = amp, amp_z = amp_z)
+anova_raw_base_dat <- data.frame(id = par_id, 
+                                 emo_cat = emo_cat, 
+                                 baseline_cat = baseline_cat, 
+                                 amp = amp)#, amp_z = amp_z)
+
+anova_raw_base_dat <- anova_raw_base_dat %>% 
+  mutate(emo_cat = factor(emo_cat, 
+                          levels = c("pleasant","neutral","unpleasant"))) %>% 
+  group_by(id,baseline_cat) %>% 
+  mutate(amp_z = as.vector(scale(amp))) %>% 
+  ungroup()
+
 write.csv(anova_raw_base_dat, "/Volumes/startech3TB_bkup/research_data/Pic_Vid/anova_raw_base_dat.csv", row.names = F) 
+
 aov_emo_base_amp <- afex::aov_ez(id = "id",
                                 data = anova_raw_base_dat,
                                 within = c("emo_cat","baseline_cat"),
                                 dv = "amp")
-summary(aov_emo_base)
+summary(aov_emo_base_amp)
+
+
 aov_emo_base_amp_z <- afex::aov_ez(id = "id",
                                  data = anova_raw_base_dat,
                                  within = c("emo_cat","baseline_cat"),
                                  dv = "amp_z")
 summary(aov_emo_base_amp_z)
+
+anova_raw_base_dat %>% 
+  group_by(baseline_cat, emo_cat) %>% 
+  summarise(mean_amp = mean(amp),
+            se_amp = plotrix::std.error(amp),
+            mean_amp_z = mean(amp_z),
+            se_amp_z = plotrix::std.error(amp_z))
 
 
 ##
