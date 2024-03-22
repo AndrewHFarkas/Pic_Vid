@@ -69,6 +69,380 @@ if (dir.exists(sabat_data_folder)) {
 
 # Load data and models ####
 
+## Good trials, demographics, ratings ####
+
+pic_vid_trial_data <- data.frame("par_id" = 1:50)
+
+# Bad participants
+no_pictures <- c(9)
+no_videos <- c(38)
+bad_participants <- c(9,38)
+
+## no picture participants were missing more than 50% for any valence
+# more_than_50_percent_of_video_trials_missing <- c(4, 22, 24, 25, 39, 45, 49, 50) # this is total trials, not per valence
+
+pic_vid_trial_data <- pic_vid_trial_data %>% 
+  filter(!par_id %in% c(no_pictures, no_videos))
+
+# Number of good trials ####
+number_of_good_trials <- tribble(
+  ~ par_id, ~number_of_good_trials_pictures, ~number_of_good_trials_video,
+  1, 77,69,
+  2, 67,70,
+  3, 86,77,
+  4, 82,73,
+  5, 77,67,
+  6, 70,79,
+  7, 69,78,
+  8, 72,73,
+  9,  0,61,
+  10,66,76,
+  11,79,75,
+  12,83,67,
+  13,75,75,
+  14,55,80,
+  15,82,77,
+  16,82,78,
+  17,70,80,
+  18,80,75,
+  19,67,72,
+  20,77,77,
+  21,61,76,
+  22,80,49,
+  23,82,80,
+  24,85,63,
+  25,73,68,
+  26,66,73,
+  27,84,83,
+  28,82,81,
+  29,82,79,
+  30,75,74,
+  31,82,72,
+  32,82,78,
+  33,79,83,
+  34,77,54,
+  35,78,75,
+  36,83,82,
+  37,82,75,
+  38,84, 0,
+  39,65,50,
+  40,75,71,
+  41,70,84,
+  42,83,81,
+  43,83,76,
+  44,78,81,
+  45,82,79,
+  46,76,71,
+  47,74,73,
+  48,81,75,
+  49,77,41,
+  50,70,54)
+
+pic_vid_trial_data <- merge(x = pic_vid_trial_data, y = number_of_good_trials,
+                            by.x = "par_id", by.y = "par_id", all.x = T)
+
+pic_vid_trial_data %>% 
+  summarise(mean_pic = mean(number_of_good_trials_pictures),
+            mean_vid = mean(number_of_good_trials_video))
+
+# write.csv(pic_vid_trial_data,
+#           file = paste0(parent_directory, "/misc/pic_vid_good_trials_out_of_90.csv"),
+#           quote = F,row.names = F)
+
+
+# Demographics ####
+demographic_information <- read.csv(paste0(parent_directory, "/misc/Participant_data.csv")) %>% 
+  mutate(par_id = 1:50, .before = 1) %>% 
+  select(-Par_id) %>% 
+  filter(!par_id %in% bad_participants)
+
+demographic_information %>% pull(age) %>% summary()
+demographic_information %>% pull(age) %>% sd(na.rm = T)
+
+demographic_information %>% pull(sex) %>% table()
+
+demographic_information %>% pull(race.ethnicity) %>% table()
+
+# Ratings data ####
+ratings_data <- read.csv(paste0(parent_directory, "/misc/ratings_by_par_by_scene.csv")) %>% 
+  mutate(par_id = stringr::str_extract(Par_id, "\\d+") %>% as.numeric(),
+         .before = 1) %>% 
+  select(-Par_id) %>% 
+  filter(!par_id %in% bad_participants) %>% 
+  mutate(Stim_cat = factor(Stim_cat,
+                           levels = c("Pleasant",
+                                      "Neutral",
+                                      "Unpleasant")))
+
+by_scene_ratings_with_path <- ratings_data %>% 
+  group_by(Stim_name, Stim_type, Stim_cat) %>% 
+  summarise(mean_aro = mean(arousal),
+            mean_val = mean(valence)) %>% 
+  mutate(path = paste0("/home/andrewf/Research_data/EEG/Pic_Vid/Stimuli/matt_diss/Pics/", 
+                       Stim_name, ".jpg"))  
+
+# Load in ssVEP LPP ####
+
+## Sensors used ####
+# 9 channels more parietal 
+lpp_chans <- c(34, #CCP1H
+               39, #CP1
+               95, #CZ
+               44, #CPP1H
+               40, #CPZ
+               109, # CPP2H
+               104, #CP2
+               100, #CCP2H
+               50) #Pz
+
+
+
+# nine channels
+occipital_chans <- c(56, # POz
+                     61, # O9/I1
+                     59, # O1
+                     62, # OI1h
+                     63, # OZ
+                     64, # IZ
+                     125,# O2
+                     127,# OI2h
+                     128)# O10/I2
+
+## Load in category ERPs ####
+# lpp 400ms 279pt - 900ms 526pt
+start_time_ms <- -125
+number_of_time_points <- 1089
+sample_rate_hz <- 512
+
+lpp_time_key <- data.frame(time_pt = 1:number_of_time_points) %>% 
+  mutate(time_ms = rep(start_time_ms,number_of_time_points) + 
+           ((((1:number_of_time_points)-1) * (1000/sample_rate_hz))),
+         V_time_pt = paste0("V", time_pt))
+
+lpp_cat_dat <- EMEGShelper::read_ar_files(data_folders = picture_by_cat_ar_directory,
+                                          patterns = ".ar$",
+                                          baseline_pts = c(14:65),
+                                          select_time_points = c(279:526),
+                                          average_channels = T,
+                                          average_timepoints = T,
+                                          include_file_name = T,
+                                          extract_channels = lpp_chans) %>% 
+  rename(amp = V1)
+
+lpp_cat_wave <- EMEGShelper::read_ar_files(data_folders = picture_by_cat_wave_directory,
+                                           patterns = ".ar$",
+                                           baseline_pts = c(14:65),
+                                           average_channels = T,
+                                           include_file_name = T,
+                                           extract_channels = lpp_chans)
+lpp_cat_wave <- lpp_cat_wave %>% 
+  mutate(category = case_when(
+    file_name == "CAVG.cat3.pleasant.at.ar" ~ "pleasant",
+    file_name == "CAVG.cat3.neutral.at.ar" ~ "neutral",
+    file_name == "CAVG.cat3.unpleasant.at.ar" ~ "unpleasant"), .before = V1) %>%
+  mutate(category = factor(category,
+                           levels = c("pleasant", "neutral", "unpleasant"))) %>% 
+  select(-file_name) %>% 
+  pivot_longer(cols = starts_with("V"), 
+               values_to = "amp",
+               names_to = "time_point") %>% 
+  merge(y = lpp_time_key, by.x = "time_point", by.y = "V_time_pt", all.x = T) %>% 
+  select(time_ms, category, amp) %>% 
+  arrange(category, time_ms)
+
+
+
+
+# ssVEP 1000ms 1537pt - 9000ms 5633pt
+start_time_ms <- -2000
+number_of_time_points <- 6146
+sample_rate_hz <- 512
+
+ssvep_time_key <- data.frame(time_pt = 1:number_of_time_points) %>% 
+  mutate(time_ms = rep(start_time_ms,number_of_time_points) + 
+           ((((1:number_of_time_points)-1) * (1000/sample_rate_hz))),
+         V_time_pt = paste0("V", time_pt))
+
+ssvep_cat_dat <- EMEGShelper::read_ar_files(data_folders = video_by_cat_directory,
+                                            patterns = ".hamp8$",
+                                            select_time_points = c(1537:5633),
+                                            average_channels = T,
+                                            average_timepoints = T,
+                                            include_file_name = T,
+                                            extract_channels = occipital_chans) %>% 
+  rename(amp = V1)
+
+ssvep_cat_wave <- EMEGShelper::read_ar_files(data_folders = video_by_cat_wave_directory,
+                                             patterns = ".ar$",
+                                             average_channels = T,
+                                             include_file_name = T,
+                                             extract_channels = occipital_chans)
+
+ssvep_cat_wave <- ssvep_cat_wave %>% 
+  mutate(category = case_when(
+    file_name == "CAVG.cat3.pleasant.at.ar" ~ "pleasant",
+    file_name == "CAVG.cat3.neutral.at.ar" ~ "neutral",
+    file_name == "CAVG.cat3.unpleasant.at.ar" ~ "unpleasant"), .before = V1) %>%
+  mutate(category = factor(category,
+                           levels = c("pleasant", "neutral", "unpleasant"))) %>% 
+  select(-file_name) %>% 
+  pivot_longer(cols = starts_with("V"), 
+               values_to = "amp",
+               names_to = "time_point") %>% 
+  merge(y = ssvep_time_key, by.x = "time_point", by.y = "V_time_pt", all.x = T) %>% 
+  select(time_ms, category, amp) %>% 
+  arrange(category, time_ms)
+
+## Load by video/scene ERPs####
+# ssVEP by video
+
+load(paste0(parent_directory,"/misc/by_video.RData"))
+
+by_video_ssvep_amp <- by_scene_info %>% 
+  filter(channel_names %in% occipital_chans) %>% 
+  select(!any_of(c("category", "scene_id_con_num", "file_name", "channel_names"))) %>% 
+  group_by(par_id, scene) %>% 
+  summarise_all(mean) %>% 
+  ungroup() %>% 
+  mutate(., ssvep_amp = rowMeans(as.matrix(select(., paste0("V", c(1537:5633))))),
+         .after = "scene") %>% 
+  group_by(par_id) %>% 
+  mutate(zscore_ssvep_amp = as.numeric(scale(ssvep_amp), .after = "ssvep_amp")) %>% 
+  select(par_id, scene, ssvep_amp, zscore_ssvep_amp) %>% 
+  ungroup() %>% 
+  mutate(par_id = stringr::str_extract(par_id, "\\d+") %>% as.numeric()) %>% 
+  filter(!par_id %in% bad_participants)
+
+# lpp by scene
+lpp_scene_dat <- EMEGShelper::read_ar_files(data_folders = picture_by_scene_ar_directory,
+                                            patterns = ".ar$",
+                                            baseline_pts = c(14:65),
+                                            select_time_points = c(279:526),
+                                            average_channels = T,
+                                            average_timepoints = T,
+                                            include_file_name = T,
+                                            extract_channels = lpp_chans) %>% 
+  rename(amp = V1)
+
+
+lpp_scene_dat <- lpp_scene_dat %>% 
+  reframe(par_id = stringr::str_extract(file_name, "\\d+") %>% as.numeric(),
+          scene_id = stringr::str_extract(file_name, "(\\d+)(?!.*\\d)") %>% as.numeric(),
+          lpp_amp = amp) %>% 
+  group_by(par_id) %>% 
+  mutate(zscore_lpp_amp = as.numeric(scale(lpp_amp)))
+
+pic_id_key <- read.csv(paste0(parent_directory, "/misc/Picture_id_number.csv"))
+
+lpp_scene_dat <- merge(x = lpp_scene_dat, 
+                       y = pic_id_key, 
+                       by.x = "scene_id", 
+                       by.y = "con_id", 
+                       all.x = T)
+
+
+# Consolidate and merge data####
+lpp_cat_dat <- lpp_cat_dat %>% 
+  reframe(par_id = stringr::str_extract(lpp_cat_dat$file_name, "\\d+") %>% as.numeric(),
+          cat_id = stringr::str_extract(lpp_cat_dat$file_name, "(\\d+)(?!.*\\d)") %>% as.numeric(),
+          lpp_amp = amp) %>% 
+  mutate("category" = case_when(
+    cat_id == 1 ~ "pleasant",
+    cat_id == 2 ~ "neutral",
+    cat_id == 3 ~ "unpleasant"),
+    .before = lpp_amp) %>% 
+  group_by(par_id) %>% 
+  mutate("zscore_lpp_amp" = as.numeric(scale(lpp_amp))) %>% 
+  ungroup() %>% 
+  filter(!par_id %in% bad_participants)
+
+
+ssvep_cat_dat <- ssvep_cat_dat %>% 
+  reframe(par_id = stringr::str_extract(ssvep_cat_dat$file_name, "\\d+") %>% as.numeric(),
+          cat_id = stringr::str_extract(ssvep_cat_dat$file_name, pattern = "at[1-3].hamp8$") %>% 
+            stringr::str_extract("\\d+") %>% as.numeric(),
+          ssvep_amp = -amp) %>% 
+  mutate("category" = case_when(
+    cat_id == 1 ~ "pleasant",
+    cat_id == 2 ~ "neutral",
+    cat_id == 3 ~ "unpleasant"),
+    .before = ssvep_amp) %>% 
+  group_by(par_id) %>% 
+  mutate("zscore_ssvep_amp" = as.numeric(scale(ssvep_amp))) %>% 
+  ungroup() %>% 
+  filter(!par_id %in% bad_participants)
+
+
+ssvep_lpp_dat_by_participant <- lpp_cat_dat %>% 
+  full_join(ssvep_cat_dat,  by = c("par_id","cat_id", "category")) %>% 
+  mutate(cat_id = factor(cat_id,
+                         levels = c(1,2,3)),
+         category = factor(category,
+                           levels = c("pleasant", "neutral", "unpleasant")))
+
+gm_by_video_ssvep_amp <- by_video_ssvep_amp %>% 
+  group_by(scene) %>% 
+  select(-par_id) %>% 
+  summarise_all(mean) %>% 
+  mutate(Stim_type = factor("Video",
+                            levels = c("Pics",
+                                       "Video")),
+         .before = 1)
+
+gm_lpp_scene_dat <- lpp_scene_dat %>% 
+  reframe(scene = picture,
+          lpp_amp = lpp_amp,
+          zscore_lpp_amp = zscore_lpp_amp) %>% 
+  group_by(scene) %>% 
+  summarise_all(mean) %>% 
+  mutate(Stim_type = factor("Pics",
+                            levels = c("Pics",
+                                       "Video")),
+         .before = 1)
+
+
+gm_erp_by_scene <- rbind.data.frame(rename(gm_by_video_ssvep_amp,
+                                           "amp" = ssvep_amp,
+                                           "zscore_amp" = zscore_ssvep_amp),
+                                    rename(gm_lpp_scene_dat,
+                                           "amp" = lpp_amp,
+                                           "zscore_amp" = zscore_lpp_amp))
+
+by_scene_ratings_with_path <- ratings_data %>% 
+  group_by(Stim_name, Stim_type, Stim_cat) %>% 
+  summarise(mean_aro = mean(arousal),
+            mean_val = mean(valence)) %>% 
+  mutate(path = paste0("/home/andrewf/Research_data/EEG/Pic_Vid/Stimuli/matt_diss/Pics/", 
+                       Stim_name, ".jpg"))  
+
+ratings_erps_path_by_scene <- merge(gm_erp_by_scene, y = by_scene_ratings_with_path,
+                                    by.x = c("Stim_type", "scene"), by.y = c("Stim_type", "Stim_name"))
+
+lpp_scene_dat_ratings <- merge(x = lpp_scene_dat, y = ratings_data[ratings_data$Stim_type == "Pics",], 
+                               by.x = c("picture","par_id"), by.y = c("Stim_name", "par_id"))
+
+by_video_ssvep_amp_ratings <- merge(x = by_video_ssvep_amp, y = ratings_data[ratings_data$Stim_type == "Video",], 
+                                    by.x = c("scene","par_id"), by.y = c("Stim_name", "par_id"))
+
+
+gm_ssvep_lpp <- ssvep_lpp_dat_by_participant %>% 
+  group_by(category) %>% 
+  summarise(mean_zscore_lpp   = mean(zscore_lpp_amp, na.rm = T),
+            se_zscore_lpp     = plotrix::std.error(zscore_lpp_amp),
+            mean_zscore_ssvep = mean(zscore_ssvep_amp, na.rm = T),
+            se_zscore_ssvep   = plotrix::std.error(zscore_ssvep_amp))
+
+gm_amp_long <- gm_ssvep_lpp %>% 
+  pivot_longer(
+    cols = starts_with("mean_") | starts_with("se_"),
+    names_to = c(".value", "erp_type"),
+    names_pattern = "(mean_|se_)(.*)"
+  ) %>% 
+  rename(mean_amp = mean_,
+         se_amp = se_) 
+
+
+
 ## By category data ####
 
 load(paste0(parent_directory,
@@ -154,16 +528,486 @@ loo::loo_model_weights(list(model003_ssvep_fit_loo,
 
 # Figure 1 is the paradigm already made ####
 
-# Figure 2 is by category and by scene ratings ####
+# Model equations ####
 
-# Figure 3 is by category waveforms, raw category means per participant?,
-# z-score category means, z-score correlations by arousal and against 
-# each other?
+# Figure 2 Category rating dot plot####
+dot_size <- 7
+dodge_size <- .7
+text_size <- 20
+axis_line_thickness <- 2
+valence_colors <- c("blue1","black", "red1", "white")
+color_blind_valence_colors <- c("#0072B2","#009E73","#D55E00","ivory4")
 
-# Figure 4 are the model 003, 007 equations
 
-# Figure 5 is raw data, participant mean posteriors, and category posteriors,
-# and posterior predictive?
+gm_ratings_long <- ratings_data %>% 
+  group_by(Stim_cat,Stim_type) %>% 
+  summarise(mean_val = mean(valence),
+            se_val = plotrix::std.error(valence),
+            mean_aro = mean(arousal),
+            se_aro = plotrix::std.error(arousal)) %>% 
+  pivot_longer(
+    cols = starts_with("mean_") | starts_with("se_"),
+    names_to = c(".value", "rating"),
+    names_pattern = "(mean_|se_)(.*)"
+  ) %>% 
+  rename(mean_rating = mean_,
+         se_rating = se_) 
+
+ratings_cat_breaks <- seq(1, 9, by = 1)
+ratings_cat_limits <- c(1,9)
+
+arousal_plot <- gm_ratings_long %>% 
+  filter(rating == "aro") %>% 
+  ggplot() +
+  geom_line(aes(x = Stim_cat,
+                y = mean_rating, 
+                group = Stim_type),
+            linetype = "dotted",
+            position = position_dodge(width = dodge_size)) + 
+  geom_point(aes(x = Stim_cat, shape = Stim_type,
+                 y = mean_rating),
+             color = "black",
+             position = position_dodge(width = dodge_size),
+             size = dot_size + 1) +
+  geom_point(aes(x = Stim_cat, shape = Stim_type,
+                 y = mean_rating,
+                 color = Stim_cat),
+             position = position_dodge(width = dodge_size),
+             size = dot_size) +
+  scale_y_continuous(breaks = ratings_cat_breaks,
+                     limits = ratings_cat_limits,
+                     name = "Unarousing/Unpleasant          Arousing/Pleasant",
+                     expand = c(0,0)) +
+  scale_shape_manual(name = "Stimulus Modality", values = c(15,19), labels = c("Scenes", "Videos")) +
+  scale_color_manual(values = c(valence_colors),) +
+  scale_x_discrete(name = "Category", 
+                   labels = c("Pleasant", "Neutral", "Unpleasant    "),
+                   guide = guide_axis(n.dodge = 2)) +
+  guides(color = "none") +
+  theme_classic() +
+  ggtitle("Arousal") +
+  theme(#legend.position = c(.5,.97), 
+    legend.title.align = .5,
+    plot.title = element_text(hjust = .5, vjust = .5,
+                              size = text_size, 
+                              family = "Arial", 
+                              face = "bold"),
+    legend.text = element_text(size = text_size, 
+                               family = "Arial", 
+                               face = "bold"),
+    #legend.justification = c(.5,1)
+    #,legend.key.height = unit(.5, "cm")
+    legend.box.margin = margin(-20, 0, 0, 0),
+    text = element_text(size = text_size, family = "Arial", face = "bold"),
+    axis.line = element_line(size = axis_line_thickness,
+                             lineend = "square"),
+    axis.ticks = element_blank(),
+    axis.text = element_text(size = text_size, 
+                             family = "Arial", 
+                             face = "bold",
+                             color = "black"),
+    legend.position = "none",
+    axis.title.x = element_blank(),
+    axis.title.y = element_text(size = text_size, family = "Arial", face = "bold")) +
+  guides(shape = guide_legend(direction = "horizontal", title.position = "top"))
+
+valence_plot <- gm_ratings_long %>% 
+  filter(rating == "val") %>% 
+  ggplot() +
+  geom_line(aes(x = Stim_cat,
+                y = mean_rating, 
+                group = Stim_type),
+            linetype = "dotted",
+            position = position_dodge(width = 0.4)) + 
+  geom_point(aes(x = Stim_cat, shape = Stim_type,
+                 y = mean_rating),
+             color = "black",
+             position = position_dodge(width = dodge_size),
+             size = dot_size + 1) + 
+  geom_point(aes(x = Stim_cat, shape = Stim_type,
+                 y = mean_rating,
+                 color = Stim_cat),
+             position = position_dodge(width = dodge_size),
+             size = dot_size) + 
+  # annotate("text", x = 2, y = 0.5, label = "Stimulus X Valence\nF(2,94) = 2.23, p = .12;\nηg2 = .023", size = 8) +
+  scale_y_continuous(breaks = ratings_cat_breaks,
+                     limits = ratings_cat_limits,expand = c(0,0)) +
+  scale_shape_manual(name = "Ratings by Stimulus Modality", values = c(15,19), labels = c("Scenes", "Videos")) +
+  scale_color_manual(values = c(valence_colors),) +
+  scale_x_discrete(name = "Category", 
+                   labels = c("Pleasant", "Neutral", "Unpleasant    "),
+                   guide = guide_axis(n.dodge = 2)) +
+  guides(color = "none") +
+  theme_classic() +
+  ggtitle("Valence") +
+  theme(legend.position = c(.5,.5), 
+        legend.justification = c(0.5, 0.5),
+        legend.box.just = "center",
+        # legend.title.align = .5,
+        legend.text = element_text(size = text_size, 
+                                   family = "Arial", 
+                                   face = "bold"),
+        legend.text.align = .5,
+        legend.title = element_blank(),
+        plot.title = element_text(hjust = .5, vjust = .5,
+                                  size = text_size, 
+                                  family = "Arial", 
+                                  face = "bold"),
+        #legend.justification = c(.5,1)
+        #,legend.key.height = unit(.5, "cm")
+        # legend.box.margin = margin(-20, 0, 0, 0),
+        text = element_text(size = text_size, family = "Arial", face = "bold"),
+        axis.line = element_line(size = axis_line_thickness,
+                                 lineend = "square"),
+        axis.ticks = element_blank(),
+        axis.text = element_text(size = text_size, 
+                                 family = "Arial", 
+                                 face = "bold",
+                                 color = "black"),
+        axis.title.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank()) +
+  guides(shape = guide_legend(direction = "horizontal", title.position = "top"))
+
+
+
+
+layout <- "
+AA
+BC
+BC
+BC
+BC
+BC
+BC
+BC
+BC
+BC
+BC
+BC
+BC
+BC
+BC
+BC
+BC
+BC
+BC
+BC
+BC
+BC
+BC
+BC
+BC
+BC
+BC
+"
+
+tiff(filename = paste0(parent_directory, 
+                       "/misc/002figure_aro_val_cate_dot.tiff"),
+     width = 6.5, height = 8, units = "in", res = 300)
+  guide_area() + arousal_plot + valence_plot +
+    plot_layout(design = layout,guides = "collect")
+dev.off()
+
+svg(filename = paste0(parent_directory, 
+                       "/misc/002figure_aro_val_cate_dot.svg"),
+     width = 6.5, height = 8)#, units = "in", res = 300)
+  guide_area() + arousal_plot + valence_plot +
+    plot_layout(design = layout,guides = "collect")
+dev.off()
+
+
+
+# Figure 3 Video x picture ratings scatter####
+library(grid)
+library(jpeg)
+# text_size <- 30
+inner_raster_text_size <- 7
+scene_dot_size <- .20
+
+
+arousal_by_modality <- by_scene_ratings_with_path %>% 
+  pivot_wider(id_cols = c("Stim_name", "path"),
+              names_from = Stim_type, 
+              values_from = mean_aro)
+
+valence_by_modality <- by_scene_ratings_with_path %>% 
+  pivot_wider(id_cols = c("Stim_name", "path"),
+              names_from = Stim_type, 
+              values_from = mean_val)
+
+arousal_raster <- arousal_by_modality %>% 
+  ggplot(aes(Pics, Video)) +
+  geom_blank() +
+  scale_x_continuous(breaks = seq(2, 8, by = 1),
+                     limits = c(2.5,8.5),
+                     expand = c(0,0),
+                     name = "Scene Arousal Rating") +
+  scale_y_continuous(breaks = seq(2, 8, by = 1),
+                     limits = c(2.5,8.5),
+                     expand = c(0,0),
+                     name = "Video Arousal Rating") +
+  theme_classic() +
+  theme(text = element_text(size = text_size, 
+                            family = "Arial", 
+                            face = "bold"),
+        axis.line = element_line(size = axis_line_thickness,
+                                 lineend = "square"),
+        axis.ticks = element_blank(),
+        axis.text = element_text(color = "black"),
+        legend.position = "none")
+
+
+for (i in 1:90) {
+  img <- arousal_by_modality$path[i] %>% 
+    readJPEG() %>% 
+    rasterGrob(interpolate=TRUE)
+  
+  arousal_raster <- arousal_raster + 
+    annotation_custom(img, 
+                      xmin = arousal_by_modality$Pics[i] -scene_dot_size, 
+                      xmax = arousal_by_modality$Pics[i] +scene_dot_size, 
+                      ymin = arousal_by_modality$Video[i] -scene_dot_size, 
+                      ymax = arousal_by_modality$Video[i] +scene_dot_size)
+  print(i)
+}
+
+# jpeg(filename = paste0(parent_directory, "/misc/arousal_raster.jpg"),
+#      width = 8, height = 8, units = "in", res = 300)
+arousal_raster <- arousal_raster +
+  geom_line(data = data.frame(x = seq(1,9,by =.1),
+                              y = seq(1,9,by =.1)),
+            aes(x, y), linetype = "dashed", alpha = .5,
+            linewidth = axis_line_thickness)
+  # annotate("text", x = 4.25, y = 8,
+  #          label = "Video More Arousing", 
+  #          size = inner_raster_text_size) +
+  # annotate("text", x = 4, y = 7,
+  #          label = "Paired T-Test\nt(89) = 5.8, p < .001\nD = .19", size = 8) +
+  # annotate("text", x = 6.75, y = 3,
+  #          label = "Scene More Arousing", 
+  #          size = inner_raster_text_size)
+# dev.off()
+
+valence_raster <- valence_by_modality %>% 
+  ggplot(aes(Pics, Video)) +
+  geom_blank() +
+  scale_x_continuous(breaks = seq(2, 8, by = 1),
+                     limits = c(2.5,8.5),
+                     expand = c(0,0),
+                     name = "Scene Valence Rating") +
+  scale_y_continuous(breaks = seq(2, 8, by = 1),
+                     limits = c(2.5,8.5),
+                     expand = c(0,0),
+                     name = "Video Valence Rating") +
+  theme_classic() +
+  theme(text = element_text(size = text_size, family = "Arial", face = "bold"),
+        axis.line = element_line(size = axis_line_thickness,
+                                 lineend = "square"),
+        axis.ticks = element_blank(),
+        axis.text = element_text(color = "black"),
+        legend.position = "none")
+
+
+for (i in 1:90) {
+  img <- valence_by_modality$path[i] %>% 
+    readJPEG() %>% 
+    rasterGrob(interpolate=TRUE)
+  
+  valence_raster <- valence_raster + 
+    annotation_custom(img, 
+                      xmin = valence_by_modality$Pics[i] -scene_dot_size, 
+                      xmax = valence_by_modality$Pics[i] +scene_dot_size, 
+                      ymin = valence_by_modality$Video[i] -scene_dot_size, 
+                      ymax = valence_by_modality$Video[i] +scene_dot_size)
+  print(i)
+}
+
+# jpeg(filename = paste0(parent_directory, "/misc/valence_raster.jpg"),
+#      width = 8, height = 8, units = "in", res = 300)
+valence_raster <- valence_raster +
+  geom_line(data = data.frame(x = seq(1,9,by =.1),
+                              y = seq(1,9,by =.1)),
+            aes(x, y), linetype = "dashed", alpha = .5,
+            linewidth = axis_line_thickness)
+  # annotate("text", x = 4.25, y = 8,
+  #          label = "Video More Pleasant", 
+  #          size = inner_raster_text_size) +
+  # annotate("text", x = 4, y = 7,
+  #          label = "Paired T-Test\nt(89) = 2.1, p = .04\nD = .04", size = 8) +
+  # annotate("text", x = 6.75, y = 3,
+  #          label = "Scene More Pleasant", 
+  #          size = inner_raster_text_size,)
+# dev.off()
+
+
+# layout <- "
+# AB
+# "
+# 
+# guide_area() +
+#   arousal_plot + valence_plot + 
+#   arousal_raster + valence_raster +
+#   plot_layout(design = layout,guides = "collect")
+
+
+
+
+tiff(filename = paste0(parent_directory, 
+                       "/misc/003figure_by_scene_ratings.tiff"),
+     width = 8.5, height = 4, units = "in", res = 300)
+arousal_raster + valence_raster
+dev.off()
+
+svg(filename = paste0(parent_directory, 
+                       "/misc/003figure_by_scene_ratings.svg"),
+     width = 8.5, height = 4)#, units = "in", res = 300)
+arousal_raster + valence_raster
+dev.off()
+
+# Figure 4 top:waveform category dot plot, bottom: erp X arousal cor####
+
+### ERP dot plot ####
+y_axis_breaks <- seq(-.9, .9, by = .2)
+y_axis_limits <- c(-1,1)
+text_size = 20
+axis_line_thickness = 2
+valence_colors <- c("blue1","black", "red1", "white")
+# color_blind_valence_colors <- c("#0072B2","#009E73","#D55E00","ivory4")
+
+
+gm_amp_dot_plot <- ggplot(gm_amp_long) +
+  geom_line(aes(x = category,
+                y = mean_amp, 
+                group = erp_type),
+            linetype = "dotted",
+            position = position_dodge(width = 0.4)) + 
+  geom_pointrange(aes(x = category, shape = erp_type,
+                      y = mean_amp, ymax = mean_amp + se_amp,
+                      ymin = mean_amp - se_amp),
+                  color = "black",
+                  position = position_dodge(width = 0.4),
+                  size = 2.5, linewidth = 4) + 
+  geom_pointrange(aes(x = category, shape = erp_type,
+                      y = mean_amp, ymax = mean_amp + se_amp,
+                      ymin = mean_amp - se_amp,
+                      color = category),
+                  position = position_dodge(width = 0.4),
+                  size = 2, linewidth = 2) + 
+  # annotate("text", x = 1.95, y = 0.45, 
+  #          label = "Stimulus X Valence\nF(2,94) = 2.23, p = .12;\nηg2 = .023", 
+  #          size = 8) +
+  scale_y_continuous(breaks = y_axis_breaks,
+                     name = "Scene Z-score",
+                     limits = y_axis_limits,
+                     expand = c(0,0),
+                     sec.axis = sec_axis(trans = ~ . * -1, 
+                                         name = "Video Z-score",
+                                         breaks = -y_axis_breaks)) +
+  scale_shape_manual(values = c(15,19), labels = c("Scene LPP", "Video ssVEP")) +
+  scale_color_manual(values = c(valence_colors),) +
+  scale_x_discrete(name = "Category", 
+                   labels = c("Pleasant", "Neutral", "Unpleasant"), 
+                   guide = guide_axis(n.dodge = 2)) +
+  guides(color = "none") +
+  theme_classic() +
+  theme(legend.position = c(.5,.97), 
+        legend.title = element_blank(),
+        legend.justification = c(.5,1)
+        ,legend.key.height = unit(.9, "cm")
+        , legend.box.margin = margin(-15, 0, 0, 0),
+        text = element_text(size = text_size, family = "Arial", face = "bold"),
+        axis.line = element_line(size = axis_line_thickness,
+                                 lineend = "square"),
+        axis.ticks = element_blank(),
+        axis.text = element_text(color = "black")) +
+  guides(shape = guide_legend(direction = "vertical", title.position = "top"))
+
+gm_amp_dot_plot
+
+### ERP waveforms ####
+line_width <- 2
+line_outline <- .5
+
+lpp_cat_wave_plot <- lpp_cat_wave %>% 
+  ggplot() +
+  geom_line(data = data.frame(x = c(0,0), 
+                              y = c(-Inf, Inf)), 
+            aes(x = x, y = y), linetype = "dashed") +
+  geom_rect(aes(xmin = 400, xmax = 900, ymin = -Inf, ymax = Inf),
+            fill = "lightgray")+
+  geom_line(aes(x = time_ms, y = amp, group = category),
+            color = "black",
+            linewidth = line_width + line_outline) +
+  # annotate("text", x = 140, y = 1.15, face = "bold",
+  #          label = "Scene Evoked LPP\nF(2,94) = 49.03, p < .001;\n ηg2 = .511", size = 8) +
+  geom_line(aes(x = time_ms, y = amp, color = category),
+            linewidth = line_width) +
+  scale_y_continuous(limits = c(-2.3, 2),
+                     expand = c(0,0), name = "LPP (μV)") +
+  scale_x_continuous(limits = c(-125,1000), expand = c(0,0),
+                     breaks = seq(-100, 900, by = 100), name = "Time (msec)") +
+  scale_color_manual(values = c(valence_colors)) +
+  theme_classic() +
+  # ggtitle("Scene Evoked LPP \n F(2,94) = 49.03, p < .001") +
+  theme(legend.position = "none",
+        plot.title = element_text(hjust = .5, vjust = 1),
+        text = element_text(size = text_size, family = "Arial", face = "bold"),
+        axis.line = element_line(size = axis_line_thickness,
+                                 lineend = "square"),
+        axis.ticks = element_blank(),
+        axis.text = element_text(color = "black"))
+
+
+ssvep_cat_wave_plot <- ssvep_cat_wave %>% 
+  ggplot() +
+  geom_vline(aes(xintercept = 0), linetype = "dashed") +
+  geom_rect(aes(xmin = 1000, xmax = 9000, ymin = -Inf, ymax = Inf),
+            fill = "lightgray")+
+  geom_line(aes(x = time_ms, y = amp, group = category),
+            color = "black",
+            linewidth = line_width + line_outline) +
+  geom_line(aes(x = time_ms, y = amp, color = category),
+            linewidth = line_width) +
+  # annotate("text", x = 5000, y = 1.25, label = "Video Reduction in ssVEP\nF(2,94) = 49.07, p < .001; ηg2 = .511", size = 8) +
+  scale_y_continuous(limits = c(.9, 1.25),
+                     expand = c(0,0), name = "ssVEP (μV)") +
+  scale_x_continuous(limits = c(-2000,10000),expand = c(0,0),
+                     breaks = seq(-1000, 9000, by = 1000),
+                     name = "Time (msec)",guide = guide_axis(n.dodge = 2)) +
+  scale_color_manual(values = c("blue1","black", "red1")) +
+  theme_classic() +
+  theme(legend.position = "none",
+        text = element_text(size = text_size, family = "Arial", face = "bold"),
+        axis.line = element_line(size = axis_line_thickness,
+                                 lineend = "square"),
+        axis.ticks = element_blank(),
+        axis.text = element_text(color = "black"))
+
+
+layout <- "
+AAAAAAAAABBB
+CCCCCCCCCBBB
+"
+
+tiff(filename = paste0(parent_directory,
+                       "/misc/004figure_cate_wave_dot.tiff"),
+     width = 11, height = 7, units = "in", res = 300)
+lpp_cat_wave_plot + gm_amp_dot_plot + ssvep_cat_wave_plot +
+  plot_layout(design = layout)
+dev.off()
+
+svg(filename = paste0(parent_directory,
+                       "/misc/004figure_cate_wave_dot.svg"),
+     width = 11, height = 7)#, units = "in", res = 300)
+lpp_cat_wave_plot + gm_amp_dot_plot + ssvep_cat_wave_plot +
+  plot_layout(design = layout)
+dev.off()
+
+
+# Figure 5 ERP z-scored amps X arousal####
+
+#Figure 6 model1 valence####
 
 pleasant_stimuli_ids <- data_for_stan_df %>% 
   filter(cate == 1) %>% 
@@ -241,8 +1085,8 @@ ssvep_valence_posteriors <-
 
 
 #plot elements
-par_fill <- "#F0E442"
-valence_colors <- c("#0072B2","#009E73","#D55E00","ivory4")
+par_fill <- "gold1"
+# valence_colors <- c("#0072B2","#009E73","#D55E00","ivory4")
 
 line_thickness <- 4
 density_line_thickness <- 1
@@ -254,43 +1098,176 @@ par_alpha <- .9
 font_size <- 22
 font_font <- "Arial"
 
+# layout_grid <- c("
+# ef
+# ef
+# ef
+# ef
+# ef
+# ef
+# ef
+# ef
+# ef
+# ef
+# ef
+# gg
+# gg
+# ac
+# ac
+# ac
+# ac
+# ac
+# ac
+# ac
+# ac
+# ac
+# ac
+# ac
+# ac
+# ac
+# ac
+# ac
+# ac
+# ac
+# bd
+# bd
+# bd
+# ")
+
 layout_grid <- c("
-ac
-ac
-ac
-ac
-ac
-ac
-ac
-ac
-ac
-ac
-ac
-ac
-ac
-ac
-ac
-ac
-ac
-bd
-bd
-bd
-ef
-ef
-ef
-ef
-ef
-ef
-ef
-ef
-ef
-ef
-ef
-gg
-gg
-              ")
+ab
+ab
+ab
+ab
+ab
+ab
+ab
+ab
+ab
+ab
+ab
+ab
+cc
+df
+df
+df
+df
+df
+df
+df
+df
+df
+df
+df
+df
+df
+df
+eg
+eg
+eg
+")
 
 set.seed(0)
+lpp_valence_posteriors %>% 
+  ggplot() +
+  geom_vline(aes(xintercept = 0),
+             linewidth = line_thickness) +
+  geom_density(aes(x = value, 
+                   fill = name),
+               alpha = par_alpha,
+               linewidth = density_line_thickness) +
+  scale_fill_manual(values = valence_colors,
+                    name = "Categories",
+                    labels = c("Pleasant", 
+                               "Neutral", 
+                               "Unpleasant",
+                               "Emotional vs Neutral")) +
+  scale_x_continuous(name = "Microvoltage",
+                     breaks = seq(-2, 2, by = 1),
+                     labels = seq(-2, 2, by = 1),
+                     expand = c(0,0)) +
+  scale_y_continuous(expand = c(0,0.025)) +
+  coord_cartesian(xlim = c(-2.5,2.5)) +
+  ggtitle("LPP Valence Posteriors") +
+  theme_classic()+
+  theme(
+    axis.title.y = element_blank(),
+    axis.text.y = element_blank(),
+    axis.text.x = element_text(color = "black",
+                               margin = margin(t = 5, 
+                                               unit = "pt")),
+    axis.ticks.y = element_blank(),
+    axis.ticks.x = element_blank(),
+    line = element_line(linewidth = line_thickness,
+                        lineend = "square"),
+    text = element_text(size = font_size,
+                        color = "black"),
+    plot.title = element_text(hjust = 0.5,
+                              face = "bold"),
+    # legend.title = element_text(face = "bold"),
+    legend.title = element_blank(),
+    legend.position = "bottom", 
+    legend.text = element_text(angle = 0),
+    legend.title.align = 0,
+    legend.background = element_blank(),
+    legend.key = element_blank(),
+    panel.grid.major.x = element_line(color = "black",
+                                      linetype = "dotted",
+                                      linewidth = 
+                                        panel.grid.major.x_line_thickness))+ 
+  guides(fill = guide_legend(title.position = "top",
+                             title.hjust = 0.5)) +
+  
+  ssvep_valence_posteriors %>% 
+  ggplot() +
+  geom_vline(aes(xintercept = 0),
+             linewidth = line_thickness) +
+  geom_density(aes(x = value, 
+                   fill = name),
+               alpha = par_alpha,
+               linewidth = density_line_thickness) +
+  scale_fill_manual(values = valence_colors,
+                    name = "Categories",
+                    labels = c("Pleasant", 
+                               "Neutral", 
+                               "Unpleasant",
+                               "Emotional vs Neutral")) +
+  scale_x_continuous(name = "Microvoltage",
+                     breaks = seq(-.06, .06, by = .02),
+                     labels = seq(-.06, .06, by = .02),
+                     expand = c(0,0)) +
+  scale_y_continuous(expand = c(0,0.025)) +
+  coord_cartesian(xlim = c(-.07, .07)) +
+  ggtitle("ssVEP Valence Posteriors") +
+  theme_classic()+
+  theme(
+    axis.title.y = element_blank(),
+    axis.text.y = element_blank(),
+    axis.text.x = element_text(color = "black",
+                               margin = margin(t = 5, 
+                                               unit = "pt")),
+    axis.ticks.y = element_blank(),
+    axis.ticks.x = element_blank(),
+    line = element_line(linewidth = line_thickness,
+                        lineend = "square"),
+    text = element_text(size = font_size,
+                        color = "black"),
+    plot.title = element_text(hjust = 0.5,
+                              face = "bold"),
+    # legend.title = element_text(face = "bold"),
+    legend.title = element_blank(),
+    legend.position = "top", 
+    legend.text = element_text(angle = 0),
+    legend.title.align = 0,
+    legend.background = element_blank(),
+    legend.key = element_blank(),
+    panel.grid.major.x = element_line(color = "black",
+                                      linetype = "dotted",
+                                      linewidth = 
+                                        panel.grid.major.x_line_thickness))+ 
+  guides(fill = guide_legend(title.position = "top",
+                             title.hjust = 0.5)) +
+  guide_area() +
 model003_lpp_fit_draws %>% 
   select(starts_with("bpar")) %>% 
   pivot_longer(cols = everything()) %>% 
@@ -354,7 +1331,7 @@ data.frame(name = "par_predictive",
   scale_y_continuous(expand = c(0,0)) +
   coord_cartesian(xlim = c(-5.5, 5.5),
                   ylim = c(0,.27)) +
-  ggtitle("LPP Participant Posterior") +
+  ggtitle("LPP Participant Distribution") +
   theme_classic() +
   theme(
     axis.title.y = element_blank(),
@@ -440,7 +1417,7 @@ model003_ssvep_fit_draws %>%
   scale_y_continuous(expand = c(0,0)) +
   coord_cartesian(xlim = c(.35,1.7),
                   ylim = c(0, 1.8)) +
-  ggtitle("ssVEP Participant Posterior") +
+  ggtitle("ssVEP Participant Distribution") +
   theme_classic()+
   theme(
     axis.title.y = element_blank(),
@@ -461,120 +1438,455 @@ model003_ssvep_fit_draws %>%
                                         panel.grid.major.x_line_thickness),
     plot.title = element_text(hjust = 0.5,
                               face = "bold")) +
+  plot_layout(design = layout_grid ,guides = "collect")
+
+
+
+
+ggsave(filename = paste0(parent_directory, 
+                         "/misc/006figure_model1_valence_pos.tiff"),
+       device = "tiff",dpi = 300,
+       units = "in",height = 11, width = 8.5,
+       scale = 1.275)
+
+ggsave(filename = paste0(parent_directory, 
+                         "/misc/006figure_model1_valence_pos.svg"),
+       device = "svg",height = 11, width = 8.5,
+       scale = 1.275)
+
+
+# Figure 7 post hoc erotica gore posteriors ####
+
+couple_indexes <- grepl(pattern = "ouple", x = data_for_stan_df$stim_name)
+surgery_indexes <- grepl(pattern = "urgery", x = data_for_stan_df$stim_name)
+
+couple_ids <- data_for_stan_df[couple_indexes,]$stim %>% unique()
+surgery_ids <- data_for_stan_df[surgery_indexes,]$stim %>% unique()
+
+posterior_erotica_ids <- data_for_stan_df %>% 
+  filter(stim %in% couple_ids) %>% 
+  pull(stim) %>% 
+  unique() %>% 
+  paste0("bstim[",.,"]")
+
+posterior_pleasant_stimuli_ids_no_erotica <- data_for_stan_df %>% 
+  filter(cate == 1,
+         !stim %in% couple_ids) %>% 
+  pull(stim) %>% 
+  unique() %>% 
+  paste0("bstim[",.,"]")
+
+neutral_stimuli_ids <- data_for_stan_df %>% 
+  filter(cate == 2) %>% 
+  pull(stim) %>% 
+  unique() %>% 
+  paste0("bstim[",.,"]")
+
+posterior_unpleasant_stimuli_ids_no_surgery <- data_for_stan_df %>% 
+  filter(cate == 3,
+         !stim %in% surgery_ids) %>% 
+  pull(stim) %>% 
+  unique() %>% 
+  paste0("bstim[",.,"]")
+
+posterior_surgery_ids <- data_for_stan_df %>% 
+  filter(stim %in% surgery_ids) %>% 
+  pull(stim) %>% 
+  unique() %>% 
+  paste0("bstim[",.,"]")
+
+lpp_erot_surg_val_posteriors <- model003_lpp_fit_draws %>% 
+  mutate(., sample = 1:nrow(.)) %>% 
+  select(sample, starts_with("bstim")) %>% 
+  pivot_longer(cols = starts_with("bstim")) %>% 
+  mutate(name = case_when(
+    name %in% posterior_erotica_ids ~ "erotica",
+    name %in% posterior_pleasant_stimuli_ids_no_erotica ~ "pleasant",
+    name %in% neutral_stimuli_ids ~ "neutral",
+    name %in% posterior_unpleasant_stimuli_ids_no_surgery ~ "unpleasant", 
+    name %in% posterior_surgery_ids ~ "surgery")) %>% 
+  group_by(sample, name) %>% 
+  summarise(value = mean(value)) %>% 
+  ungroup() %>% 
+  mutate(name = factor(name,
+                       levels = c("erotica",
+                                  "pleasant",
+                                  "neutral",
+                                  "unpleasant",
+                                  "surgery")))
+
+
+
+ssvep_erot_surg_val_posteriors <- model003_ssvep_fit_draws %>% 
+  mutate(., sample = 1:nrow(.)) %>% 
+  select(sample, starts_with("bstim")) %>% 
+  pivot_longer(cols = starts_with("bstim")) %>% 
+  mutate(name = case_when(
+    name %in% posterior_erotica_ids ~ "erotica",
+    name %in% posterior_pleasant_stimuli_ids_no_erotica ~ "pleasant",
+    name %in% neutral_stimuli_ids ~ "neutral",
+    name %in% posterior_unpleasant_stimuli_ids_no_surgery ~ "unpleasant", 
+    name %in% posterior_surgery_ids ~ "surgery")) %>% 
+  group_by(sample, name) %>% 
+  summarise(value = mean(value)) %>% 
+  ungroup() %>% 
+  mutate(name = factor(name,
+                       levels = c("erotica",
+                                  "pleasant",
+                                  "neutral",
+                                  "unpleasant",
+                                  "surgery")))
+
+layout_grid = c("
+A
+B
+B
+B
+B
+B
+C
+C
+C
+C
+C
+")
+fig7_colors <- c("darkblue",
+                 "blue1", 
+                 "black", 
+                 "red1", 
+                 "darkred")
+
+fig7_colors <- c("blue1",
+                 "blue1", 
+                 "black", 
+                 "red1", 
+                 "red1")
+
+fig7_linetypes <- c(5,
+                    1,
+                    1,
+                    1,
+                    5)
+
+fig7_alpha <- .8
+fig7_density_line_thickness <- 2
+
+# c(col2rgb("darkblue")/255)
+# c(col2rgb("blue1")/255)
+# c(col2rgb("black")/255)
+# c(col2rgb("red1")/255)
+# c(col2rgb("darkred")/255)
+# 
+# fig7_colors_alpha <- c(rgb(0, 0, .545098, .5),
+#                           rgb(0, 0, 1,       .5), 
+#                           rgb(0, 0, 0,       .5), 
+#                           rgb(1, 0, 0,       .5), 
+#                           rgb(.545098, 0, 0, .5))
+
+guide_area() +
+lpp_erot_surg_val_posteriors %>% 
+  ggplot() +
+  geom_vline(aes(xintercept = 0),
+             linewidth = line_thickness) +
+  geom_density(aes(x = value, 
+                   fill = name,
+                   linetype = name),
+               alpha = fig7_alpha,
+               linewidth = fig7_density_line_thickness) +
+  scale_fill_manual(values = fig7_colors,
+                    name = "Categories",
+                    labels = c("Erotica", 
+                               "Pleasant without erotica", 
+                               "Neutral",
+                               "Unpleasant without surgeries",
+                               "Surgeries")) +
+  scale_linetype_manual(values = fig7_linetypes,
+                        guide = "none") +
+  scale_x_continuous(name = "LPP Δ Microvoltage",
+                     breaks = seq(-2, 4, by = .5),
+                     labels = seq(-2, 4, by = .5)) +
+  scale_y_continuous(expand = c(0,0)) +
+  coord_cartesian(xlim = c(-2, 4),
+                  ylim = c(-.04,1.93)) +
+  # ggtitle("LPP Valence Posteriors") +
+  theme_classic()+
+  theme(
+    axis.title.y = element_blank(),
+    axis.text.y = element_blank(),
+    axis.text.x = element_text(color = "black",
+                               margin = margin(t = 5, 
+                                               unit = "pt")),
+    axis.ticks.y = element_blank(),
+    axis.ticks.x = element_blank(),
+    line = element_line(linewidth = line_thickness,
+                        lineend = "square"),
+    text = element_text(size = font_size,
+                        color = "black"),
+    # plot.title = element_text(hjust = 0.5,
+    #                           face = "bold"),
+    # legend.title = element_blank(),
+    legend.position = "top", 
+    legend.text = element_text(angle = 0,
+                               family = font_font,
+                               size = font_size),
+    legend.title.align = 0.5,
+    legend.background = element_blank(),
+    # legend.key = element_blank(),
+    panel.grid.major.x = element_line(color = "black",
+                                      linetype = "dotted",
+                                      linewidth = 
+                                        panel.grid.major.x_line_thickness))+ 
+  guides(color = guide_legend(title.position = "top",nrow = 2,
+                             title.hjust = 0.5)) +
+  
+  ssvep_erot_surg_val_posteriors %>% 
+  ggplot() +
+  geom_vline(aes(xintercept = 0),
+             linewidth = line_thickness) +
+  geom_density(aes(x = value, 
+                   fill = name,
+                   linetype = name),
+               alpha = fig7_alpha,
+               linewidth = fig7_density_line_thickness) +
+  scale_fill_manual(values = fig7_colors,
+                    name = "Categories",
+                    labels = c("Erotica", 
+                               "Pleasant without erotica", 
+                               "Neutral",
+                               "Unpleasant without surgeries",
+                               "Surgeries")) +
+  scale_linetype_manual(values = fig7_linetypes,
+                        guide = "none") +
+  scale_x_reverse(name = "ssVEP Δ Reversed Microvoltage",
+                  breaks = seq(.06, -.12, by = -.02),
+                  labels = sprintf("%.2f", seq(.06, -.12, by = -.02))) +
+  scale_y_continuous(expand = c(0,0)) +
+  coord_cartesian(xlim = c(.06, -.12),
+                  ylim = c(-1,60)) +
+  # ggtitle("ssVEP Valence Posteriors") +
+  theme_classic()+
+  theme(
+    axis.title.y = element_blank(),
+    axis.text.y = element_blank(),
+    axis.text.x = element_text(color = "black",
+                               margin = margin(t = 5, 
+                                               unit = "pt")),
+    axis.ticks.y = element_blank(),
+    axis.ticks.x = element_blank(),
+    line = element_line(linewidth = line_thickness,
+                        lineend = "square"),
+    text = element_text(size = font_size,
+                        color = "black"),
+    plot.title = element_text(hjust = 0.5,
+                              face = "bold"),
+    legend.title = element_text(face = "bold"),
+    # legend.title = element_blank(),
+    legend.position = "none",
+    legend.text = element_text(angle = 0),
+    legend.title.align = 0,
+    legend.background = element_blank(),
+    legend.key = element_blank(),
+    panel.grid.major.x = element_line(color = "black",
+                                      linetype = "dotted",
+                                      linewidth = 
+                                        panel.grid.major.x_line_thickness))+ 
+  plot_layout(design = layout_grid, guides = "collect")
   
 
 
-lpp_valence_posteriors %>% 
-  ggplot() +
-  geom_vline(aes(xintercept = 0),
-             linewidth = line_thickness) +
-  geom_density(aes(x = value, 
-                   fill = name),
-               alpha = par_alpha,
-               linewidth = density_line_thickness) +
-  scale_fill_manual(values = valence_colors,
-                    name = "Categories",
-                    labels = c("Pleasant", 
-                               "Neutral", 
-                               "Unpleasant",
-                               "Emotional vs Neutral")) +
-  scale_x_continuous(name = "Microvoltage",
-                     breaks = seq(-2, 2, by = 1),
-                     labels = seq(-2, 2, by = 1),
-                     expand = c(0,0)) +
-  scale_y_continuous(expand = c(0,0.025)) +
-  coord_cartesian(xlim = c(-2.5,2.5)) +
-  ggtitle("LPP Valence Posteriors") +
-  theme_classic()+
-  theme(
-    axis.title.y = element_blank(),
-    axis.text.y = element_blank(),
-    axis.text.x = element_text(color = "black",
-                               margin = margin(t = 5, 
-                                               unit = "pt")),
-    axis.ticks.y = element_blank(),
-    axis.ticks.x = element_blank(),
-    line = element_line(linewidth = line_thickness,
-                        lineend = "square"),
-    text = element_text(size = font_size,
-                        color = "black"),
-    plot.title = element_text(hjust = 0.5,
-                              face = "bold"),
-    legend.title = element_text(face = "bold"),
-    legend.position = "bottom", 
-    legend.text = element_text(angle = 0),
-    legend.title.align = 0,
-    legend.background = element_blank(),
-    legend.key = element_blank(),
-    panel.grid.major.x = element_line(color = "black",
-                                      linetype = "dotted",
-                                      linewidth = 
-                                        panel.grid.major.x_line_thickness))+ 
-  guides(fill = guide_legend(title.position = "top",
-                             title.hjust = 0.5)) +
 
-ssvep_valence_posteriors %>% 
-  ggplot() +
+
+  # scale_x_continuous(name = "Microvoltage",
+  #                    breaks = seq(-2, 2, by = 1),
+  #                    labels = seq(-2, 2, by = 1),
+  #                    expand = c(0,0)) +
+  # scale_y_continuous(expand = c(0,0.025)) +
+  # coord_cartesian(xlim = c(-2.5,2.5)) +
+  # ggtitle("LPP Valence Posteriors") +
+  # theme_classic()+
+  # theme(
+  #   axis.title.y = element_blank(),
+  #   axis.text.y = element_blank(),
+  #   axis.text.x = element_text(color = "black",
+  #                              margin = margin(t = 5, 
+  #                                              unit = "pt")),
+  #   axis.ticks.y = element_blank(),
+  #   axis.ticks.x = element_blank(),
+  #   line = element_line(linewidth = line_thickness,
+  #                       lineend = "square"),
+  #   text = element_text(size = font_size,
+  #                       color = "black"),
+  #   plot.title = element_text(hjust = 0.5,
+  #                             face = "bold"),
+  #   # legend.title = element_text(face = "bold"),
+  #   legend.title = element_blank(),
+  #   legend.position = "bottom", 
+  #   legend.text = element_text(angle = 0),
+  #   legend.title.align = 0,
+  #   legend.background = element_blank(),
+  #   legend.key = element_blank(),
+  #   panel.grid.major.x = element_line(color = "black",
+  #                                     linetype = "dotted",
+  #                                     linewidth = 
+  #                                       panel.grid.major.x_line_thickness))+ 
+  # guides(fill = guide_legend(title.position = "top",
+  #                            title.hjust = 0.5))
+
+layout_grid = c("
+A
+B
+B
+B
+B
+B
+B
+C
+C
+C
+C
+C
+C
+")
+
+#This is fun, but going to make them overlapping like the one above
+fig7_par_pos_scale <- 9
+fig7_par_pos_y_limits <- c(.9,12.9)
+fig7_rel_min_height <- .001
+
+fig7_par_pos_scale <- 1
+fig7_par_pos_y_limits <- c(.96,5.75)
+fig7_rel_min_height <- .005
+
+
+guide_area() +
+(lpp_erot_surg_val_posteriors %>% 
+  mutate(name = fct_rev(name)) %>% 
+ ggplot() +
   geom_vline(aes(xintercept = 0),
              linewidth = line_thickness) +
-  geom_density(aes(x = value, 
-                   fill = name),
-               alpha = par_alpha,
-               linewidth = density_line_thickness) +
-  scale_fill_manual(values = valence_colors,
-                    name = "Categories",
-                    labels = c("Pleasant", 
-                               "Neutral", 
-                               "Unpleasant",
-                               "Emotional vs Neutral")) +
-  scale_x_continuous(name = "Microvoltage",
-                     breaks = seq(-.06, .06, by = .02),
-                     labels = seq(-.06, .06, by = .02),
-                     expand = c(0,0)) +
-  scale_y_continuous(expand = c(0,0.025)) +
-  coord_cartesian(xlim = c(-.07, .07)) +
-  ggtitle("ssVEP Valence Posteriors") +
-  theme_classic()+
-  theme(
-    axis.title.y = element_blank(),
-    axis.text.y = element_blank(),
-    axis.text.x = element_text(color = "black",
-                               margin = margin(t = 5, 
-                                               unit = "pt")),
-    axis.ticks.y = element_blank(),
-    axis.ticks.x = element_blank(),
-    line = element_line(linewidth = line_thickness,
-                        lineend = "square"),
-    text = element_text(size = font_size,
-                        color = "black"),
-    plot.title = element_text(hjust = 0.5,
-                              face = "bold"),
-    legend.title = element_text(face = "bold"),
-    legend.position = "top", 
-    legend.text = element_text(angle = 0),
-    legend.title.align = 0,
-    legend.background = element_blank(),
-    legend.key = element_blank(),
-    panel.grid.major.x = element_line(color = "black",
-                                      linetype = "dotted",
-                                      linewidth = 
-                                        panel.grid.major.x_line_thickness))+ 
-  guides(fill = guide_legend(title.position = "top",
-                             title.hjust = 0.5)) +
-  guide_area() +
+  geom_density_ridges(aes(x = value, 
+                          y = name,
+                          fill = name),
+                      alpha = par_alpha,
+                      rel_min_height = fig7_rel_min_height,
+                      size = density_line_thickness,
+                      color = "black",
+                      scale = fig7_par_pos_scale) +
+    scale_fill_manual(values = rev(fig7_colors),
+                      name = "Categories",
+                      labels = rev(c("Erotica", 
+                                 "Pleasant without erotica", 
+                                 "Neutral",
+                                 "Unpleasant without surgeries",
+                                 "Surgeries"))) +
+    scale_x_continuous(name = "Microvoltage",
+                       breaks = seq(-2, 4, by = .5),
+                       labels = seq(-2, 4, by = .5),
+                       expand = c(0,0)) +
+    scale_y_discrete(expand = c(0,0)) +
+    coord_cartesian(xlim = c(-2,4),
+                    ylim = fig7_par_pos_y_limits) +
+    ggtitle("LPP Valence Posteriors") +
+    theme_classic()+
+    theme(
+      axis.title.y = element_blank(),
+      axis.text.y = element_blank(),
+      axis.text.x = element_text(color = "black",
+                                 margin = margin(t = 5, 
+                                                 unit = "pt")),
+      axis.ticks.y = element_blank(),
+      axis.ticks.x = element_blank(),
+      line = element_line(linewidth = line_thickness,
+                          lineend = "square"),
+      text = element_text(size = font_size,
+                          color = "black"),
+      plot.title = element_text(hjust = 0.5,
+                                face = "bold"),
+      # legend.title = element_text(face = "bold"),
+      legend.title = element_text(size = font_size,
+                                  color = "black",face = "bold"),
+      legend.position = "bottom", 
+      legend.text = element_text(angle = 0),
+      legend.title.align = 0,
+      legend.background = element_blank(),
+      legend.key = element_blank(),
+      panel.grid.major.x = element_line(color = "black",
+                                        linetype = "dotted",
+                                        linewidth = 
+                                          panel.grid.major.x_line_thickness))+ 
+    guides(fill = guide_legend(title.position = "top",
+                               title.hjust = 0.5,
+                               reverse = T))) +
+
+(ssvep_erot_surg_val_posteriors %>% 
+  mutate(name = fct_rev(name)) %>% 
+ ggplot() +
+  geom_vline(aes(xintercept = 0),
+             linewidth = line_thickness) +
+  geom_density_ridges(aes(x = value, 
+                          y = name,
+                          fill = name),
+                      alpha = par_alpha,
+                      rel_min_height = fig7_rel_min_height,
+                      size = density_line_thickness,
+                      color = "black",
+                      scale = fig7_par_pos_scale) +
+   scale_fill_manual(values = rev(fig7_colors),
+                     name = "Categories",
+                     labels = rev(c("Erotica", 
+                                "Pleasant without erotica", 
+                                "Neutral",
+                                "Unpleasant without surgeries",
+                                "Surgeries"))) +
+   scale_x_reverse(name = "Microvoltage",
+                      breaks = seq(.06, -.12, by = -.02),
+                      labels = sprintf("%.2f", seq(.06, -.12, by = -.02)),
+                      expand = c(0,0)) +
+   scale_y_discrete(expand = c(0,0)) +
+   coord_cartesian(xlim = c(.06, -.125),
+                   ylim = fig7_par_pos_y_limits) +
+   ggtitle("ssVEP Valence Posteriors") +
+   theme_classic()+
+   theme(axis.title.y = element_blank(),
+     axis.text.y = element_blank(),
+     axis.text.x = element_text(color = "black",
+                                margin = margin(t = 5, 
+                                                unit = "pt")),
+     axis.ticks.y = element_blank(),
+     axis.ticks.x = element_blank(),
+     line = element_line(linewidth = line_thickness,
+                         lineend = "square"),
+     text = element_text(size = font_size,
+                         color = "black"),
+     plot.title = element_text(hjust = 0.5,
+                               face = "bold"),
+     # legend.title = element_text(face = "bold"),
+     legend.title = element_text(size = font_size,
+                                 color = "black",face = "bold"),
+     legend.position = "top", 
+     legend.text = element_text(angle = 0),
+     legend.title.align = 0,
+     legend.background = element_blank(),
+     legend.key = element_blank(),
+     panel.grid.major.x = element_line(color = "black",
+                                       linetype = "dotted",
+                                       linewidth = 
+                                         panel.grid.major.x_line_thickness))+ 
+   guides(fill = guide_legend(title.position = "top",
+                              title.hjust = 0.5,
+                              reverse = T))) +
   plot_layout(design = layout_grid ,guides = "collect")
 
-ggsave(filename = "/home/andrewf/Research_data/EEG/Pic_Vid/misc/figure_5.png",
-       device = "png",dpi = 300,
-       units = "in",height = 11, width = 8.5,
-       scale = 1.2)
+
+# ggsave(filename = paste0(parent_directory, 
+#                          "/misc/007figure_ero_surg_posteriors.tiff"),
+#        device = "tiff",dpi = 300,
+#        units = "in",height = 11, width = 8.5,
+#        scale = 1.5)
 
 
 
-
-
-# Figure 6 is correlation posteriors overall and by participant for 
-# model 007 and 009
+# Figure 8 model 2 results ####
 
 cor_fill <- "slategray"
 
