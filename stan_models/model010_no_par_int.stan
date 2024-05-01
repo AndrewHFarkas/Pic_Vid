@@ -43,8 +43,6 @@ model {
   // declare priors
   // fixed uninformative
   par_mean ~ normal(amp_mean_prior, amp_sd_prior);
-  
-  // This is not actually covariance, should have better name
   aro_cov ~ normal(0, amp_sd_prior);
   par_sd ~ normal(0, amp_sd_prior);
   amp_sd ~ normal(0, amp_sd_prior);
@@ -70,11 +68,11 @@ generated quantities {
   real sd_aro = sd(arousal);
   real sd_amp = sd(amp);
   
-  aro_r = (aro_cov * sd_aro) / sd_amp;
+  aro_r = aro_cov / sd_amp;
   
   array[npar] real baro_r;
   for (i in 1:npar)
-    baro_r[i] = baro[i] * (sd_aro / sd_amp);
+    baro_r[i] = baro[i] / sd_amp;
   
   array[nobs] real mu_pred;
   array[nobs] real log_lik;

@@ -76,18 +76,16 @@ if (dir.exists(sabat_data_folder)) {
 pic_vid_trial_data <- data.frame("par_id" = 1:50)
 
 # Bad participants
-no_pictures <- c(9)
-no_videos <- c(38)
-bad_participants <- c(9,38)
+no_pictures <- c(9) # corrupted file
+no_videos <- c(38) # pulled out of study, felt ill
+missing_over_50perc_from_valence_cat <- c(22,39,49)
+bad_participants <- c(no_pictures, no_videos, missing_over_50perc_from_valence_cat) 
 
 # Video or picture order based on participant number
 
 saw_vids_first <- seq(1, 50, by = 2) 
 
 saw_pics_first <- seq(2, 50, by = 2)
-
-## no picture participants were missing more than 50% for any valence
-# more_than_50_percent_of_video_trials_missing <- c(4, 22, 24, 25, 39, 45, 49, 50) # this is total trials, not per valence
 
 pic_vid_trial_data <- pic_vid_trial_data %>% 
   filter(!par_id %in% c(no_pictures, no_videos))
@@ -276,65 +274,15 @@ ssvep_cat_dat <- EMEGShelper::read_ar_files(data_folders = video_by_cat_director
 
 # Baselined ssVEP 1000ms 1537pt - 9000ms 5633pt
 ## Baseline -1000ms 513pt - 0ms 1025pt
-ssvep_cat_dat_base <- EMEGShelper::read_ar_files(data_folders = video_by_cat_directory,
-                                                 patterns = ".hamp8$",
-                                                 select_time_points = c(1537:5633),
-                                                 baseline_pts = c(513:1025),
-                                                 average_channels = T,
-                                                 average_timepoints = T,
-                                                 include_file_name = T,
-                                                 extract_channels = occipital_chans) %>% 
-  rename(amp = V1)
-
-#save .csv files 
-where_to_save_ssvep_cat_dat <- "/Volumes/startech3TB_bkup/research_data/Pic_Vid"
-write.csv(ssvep_cat_dat, where_to_save_ssvep_cat_dat, row.names = F) 
-write.csv(ssvep_cat_dat_base, where_to_save_ssvep_cat_dat, row.names = F) 
-##anova compare raw and baseline dat
-par_id <- 1:50 %>%
-  .[!. %in% c(9,38)]%>%
-  rep(each = 3, time = 2)
-emo_cat <-  rep(c("pleasant","neutral","unpleasant"),time = 96)
-baseline_cat <- 1:2%>%
-  rep(each = 144)
-# We need to scale (z-score) within each participant and baseline (yes or no)
-# amp_raw_z <- scale(ssvep_cat_dat$amp,center = T, scale = T)
-# amp_base_z <- scale(ssvep_cat_dat_base$amp)
-# amp_z <- c(amp_raw_z, amp_base_z)
-amp <- c(ssvep_cat_dat$amp, ssvep_cat_dat_base$amp)
-anova_raw_base_dat <- data.frame(id = par_id, 
-                                 emo_cat = emo_cat, 
-                                 baseline_cat = baseline_cat, 
-                                 amp = amp)#, amp_z = amp_z)
-
-anova_raw_base_dat <- anova_raw_base_dat %>% 
-  mutate(emo_cat = factor(emo_cat, 
-                          levels = c("pleasant","neutral","unpleasant"))) %>% 
-  group_by(id,baseline_cat) %>% 
-  mutate(amp_z = as.vector(scale(amp))) %>% 
-  ungroup()
-
-write.csv(anova_raw_base_dat, "/Volumes/startech3TB_bkup/research_data/Pic_Vid/anova_raw_base_dat.csv", row.names = F) 
-
-aov_emo_base_amp <- afex::aov_ez(id = "id",
-                                data = anova_raw_base_dat,
-                                within = c("emo_cat","baseline_cat"),
-                                dv = "amp")
-summary(aov_emo_base_amp)
-
-
-aov_emo_base_amp_z <- afex::aov_ez(id = "id",
-                                 data = anova_raw_base_dat,
-                                 within = c("emo_cat","baseline_cat"),
-                                 dv = "amp_z")
-summary(aov_emo_base_amp_z)
-
-anova_raw_base_dat %>% 
-  group_by(baseline_cat, emo_cat) %>% 
-  summarise(mean_amp = mean(amp),
-            se_amp = plotrix::std.error(amp),
-            mean_amp_z = mean(amp_z),
-            se_amp_z = plotrix::std.error(amp_z))
+# ssvep_cat_dat_base <- EMEGShelper::read_ar_files(data_folders = video_by_cat_directory,
+#                                                  patterns = ".hamp8$",
+#                                                  select_time_points = c(1537:5633),
+#                                                  baseline_pts = c(513:1025),
+#                                                  average_channels = T,
+#                                                  average_timepoints = T,
+#                                                  include_file_name = T,
+#                                                  extract_channels = occipital_chans) %>% 
+#   rename(amp = V1)
 
 
 ##
@@ -595,12 +543,12 @@ data_list_for_stan_ssvep$arousal = data_for_stan_df[data_for_stan_df$type == 2,]
 # Data used for paper_stats_figures_11 ####
 
 
-save(ssvep_lpp_dat_by_participant,
-     ratings_erps_path_by_scene,
-     gm_
-     data_for_stan_df, 
-     file = paste0(parent_directory,
-                   "/paper_data_models/data/pic_vid_paper.RData"))
+# save(ssvep_lpp_dat_by_participant,
+#      ratings_erps_path_by_scene,
+#      gm_
+#      data_for_stan_df, 
+#      file = paste0(parent_directory,
+#                    "/paper_data_models/data/pic_vid_paper.RData"))
 
 # Fit models ####
 # fit ssvep and lpp separately, but use same model for each
@@ -1127,6 +1075,253 @@ model009_ssvep_fit_summary <- model009_ssvep_fit$summary(
   variables = model009_ssvep_fit_relevant_parameters)
 
 
+
+# Test model that doesn't use par intercept for arousal prediction####
+model_name <- "model010_007_but_different_standard_beta"
+
+model010_path <- paste0(pic_vid_repository,
+                        "/stan_models/", 
+                        model_name,
+                        ".stan")
+
+# Clear previous chains
+list.files(path = paste0(parent_directory,"/paper_data_models/models/chains/"),
+           pattern = model_name,
+           full.names = T) %>% 
+  file.remove()
+
+model010 <- cmdstan_model(model010_path, force_recompile = T)
+
+model010_lpp_fit <- model010$sample(
+  data = data_list_for_stan_lpp,
+  refresh = 200,
+  seed = 3, 
+  iter_warmup = 50000,
+  iter_sampling = posterior_samples_per_chain,
+  save_warmup = F,
+  show_messages = T,
+  output_dir = paste0(parent_directory,"/paper_data_models/models/chains"),
+  chains = number_of_chains, 
+  parallel_chains = number_of_parallel_chains)
+
+
+model010_ssvep_fit <- model010$sample(
+  data = data_list_for_stan_ssvep,
+  refresh = 200,
+  seed = 2, 
+  iter_warmup = 50000,
+  iter_sampling = posterior_samples_per_chain,
+  save_warmup = F,
+  show_messages = T,
+  output_dir = paste0(parent_directory,"/paper_data_models/models/chains"),
+  chains = number_of_chains, 
+  parallel_chains = number_of_parallel_chains)
+
+
+model010_lpp_fit_meta_data <- model010_lpp_fit$metadata()
+
+model010_ssvep_fit_meta_data <- model010_ssvep_fit$metadata()
+
+
+model010_lpp_fit_relevant_parameters <- model010_lpp_fit_meta_data$model_params[
+  !str_detect(model010_lpp_fit_meta_data$model_params, "log_lik|mu_pred")]
+
+model010_ssvep_fit_relevant_parameters <- model010_ssvep_fit_meta_data$model_params[
+  !str_detect(model010_ssvep_fit_meta_data$model_params, "log_lik|mu_pred")]
+
+
+model010_lpp_fit_summary <- model010_lpp_fit$summary(
+  variables = model010_lpp_fit_relevant_parameters)
+
+model010_ssvep_fit_summary <- model010_ssvep_fit$summary(
+  variables = model010_ssvep_fit_relevant_parameters)
+
+# Multi-level participant clusters ####
+model_name <- "model011_ML_bivariate_normal_amp_arousal"
+
+model011_path <- paste0(pic_vid_repository,
+                        "/stan_models/", 
+                        model_name,
+                        ".stan")
+
+# Clear previous chains
+list.files(path = paste0(parent_directory,"/paper_data_models/models/chains/"),
+           pattern = model_name,
+           full.names = T) %>% 
+  file.remove()
+
+model011 <- cmdstan_model(model011_path, force_recompile = T)
+
+model011_lpp_fit <- model011$sample(
+  data = data_list_for_stan_lpp,
+  init=1,
+  refresh = 200, 
+  seed = 3, 
+  iter_warmup = 5000,
+  iter_sampling = posterior_samples_per_chain,
+  save_warmup = F,
+  show_messages = T,
+  output_dir = paste0(parent_directory,"/paper_data_models/models/chains"),
+  chains = number_of_chains, 
+  parallel_chains = number_of_parallel_chains)
+
+
+model011_ssvep_fit <- model011$sample(
+  data = data_list_for_stan_ssvep,
+  init=1,
+  refresh = 200, 
+  seed = 3, 
+  iter_warmup = 5000,
+  iter_sampling = posterior_samples_per_chain,
+  save_warmup = F,
+  show_messages = T,
+  output_dir = paste0(parent_directory,"/paper_data_models/models/chains"),
+  chains = number_of_chains, 
+  parallel_chains = number_of_parallel_chains)
+
+
+model011_lpp_fit_meta_data <- model011_lpp_fit$metadata()
+
+model011_ssvep_fit_meta_data <- model011_ssvep_fit$metadata()
+
+
+model011_lpp_fit_relevant_parameters <- model011_lpp_fit_meta_data$model_params[
+  !str_detect(model011_lpp_fit_meta_data$model_params, "log_lik|mu_pred")]
+
+model011_ssvep_fit_relevant_parameters <- model011_ssvep_fit_meta_data$model_params[
+  !str_detect(model011_ssvep_fit_meta_data$model_params, "log_lik|mu_pred")]
+
+
+model011_lpp_fit_summary <- model011_lpp_fit$summary(
+  variables = model011_lpp_fit_relevant_parameters)
+
+model011_ssvep_fit_summary <- model011_ssvep_fit$summary(
+  variables = model011_ssvep_fit_relevant_parameters)
+
+# Par and Stim predictors were each participant has their own amp SD ####
+model_name <- "model012_par_stim_intercepts_MLsd"
+
+model012_path <- paste0(pic_vid_repository,
+                        "/stan_models/", 
+                        model_name,
+                        ".stan")
+
+# Clear previous chains
+list.files(path = paste0(parent_directory,"/paper_data_models/models/chains/"),
+           pattern = model_name,
+           full.names = T) %>% 
+  file.remove()
+
+model012 <- cmdstan_model(model012_path, force_recompile = T)
+
+model012_lpp_fit <- model012$sample(
+  data = data_list_for_stan_lpp,
+  # init=1,
+  refresh = 200, 
+  seed = 3, 
+  iter_warmup = 5000,
+  iter_sampling = posterior_samples_per_chain,
+  save_warmup = F,
+  show_messages = T,
+  output_dir = paste0(parent_directory,"/paper_data_models/models/chains"),
+  chains = number_of_chains, 
+  parallel_chains = number_of_parallel_chains)
+
+
+model012_ssvep_fit <- model012$sample(
+  data = data_list_for_stan_ssvep,
+  # init=2,
+  refresh = 200, 
+  seed = 3, 
+  iter_warmup = 5000,
+  iter_sampling = posterior_samples_per_chain,
+  save_warmup = F,
+  show_messages = T,
+  output_dir = paste0(parent_directory,"/paper_data_models/models/chains"),
+  chains = number_of_chains, 
+  parallel_chains = number_of_parallel_chains)
+
+
+model012_lpp_fit_meta_data <- model012_lpp_fit$metadata()
+
+model012_ssvep_fit_meta_data <- model012_ssvep_fit$metadata()
+
+
+model012_lpp_fit_relevant_parameters <- model012_lpp_fit_meta_data$model_params[
+  !str_detect(model012_lpp_fit_meta_data$model_params, "log_lik|mu_pred")]
+
+model012_ssvep_fit_relevant_parameters <- model012_ssvep_fit_meta_data$model_params[
+  !str_detect(model012_ssvep_fit_meta_data$model_params, "log_lik|mu_pred")]
+
+
+model012_lpp_fit_summary <- model012_lpp_fit$summary(
+  variables = model012_lpp_fit_relevant_parameters)
+
+model012_ssvep_fit_summary <- model012_ssvep_fit$summary(
+  variables = model012_ssvep_fit_relevant_parameters)
+
+# Multi-level participant clusters ####
+model_name <- "model013_par_intercept_arousal_slope_ML_sd"
+
+model013_path <- paste0(pic_vid_repository,
+                        "/stan_models/", 
+                        model_name,
+                        ".stan")
+
+# Clear previous chains
+list.files(path = paste0(parent_directory,"/paper_data_models/models/chains/"),
+           pattern = model_name,
+           full.names = T) %>% 
+  file.remove()
+
+model013 <- cmdstan_model(model013_path, force_recompile = T)
+
+model013_lpp_fit <- model013$sample(
+  data = data_list_for_stan_lpp,
+  # init=1,
+  refresh = 200, 
+  seed = 3, 
+  iter_warmup = 5000,
+  iter_sampling = posterior_samples_per_chain,
+  save_warmup = F,
+  show_messages = T,
+  output_dir = paste0(parent_directory,"/paper_data_models/models/chains"),
+  chains = number_of_chains, 
+  parallel_chains = number_of_parallel_chains)
+
+
+model013_ssvep_fit <- model013$sample(
+  data = data_list_for_stan_ssvep,
+  # init=2,
+  refresh = 200, 
+  seed = 3, 
+  iter_warmup = 5000,
+  iter_sampling = posterior_samples_per_chain,
+  save_warmup = F,
+  show_messages = T,
+  output_dir = paste0(parent_directory,"/paper_data_models/models/chains"),
+  chains = number_of_chains, 
+  parallel_chains = number_of_parallel_chains)
+
+
+model013_lpp_fit_meta_data <- model013_lpp_fit$metadata()
+
+model013_ssvep_fit_meta_data <- model013_ssvep_fit$metadata()
+
+
+model013_lpp_fit_relevant_parameters <- model013_lpp_fit_meta_data$model_params[
+  !str_detect(model013_lpp_fit_meta_data$model_params, "log_lik|mu_pred")]
+
+model013_ssvep_fit_relevant_parameters <- model013_ssvep_fit_meta_data$model_params[
+  !str_detect(model013_ssvep_fit_meta_data$model_params, "log_lik|mu_pred")]
+
+
+model013_lpp_fit_summary <- model013_lpp_fit$summary(
+  variables = model013_lpp_fit_relevant_parameters)
+
+model013_ssvep_fit_summary <- model013_ssvep_fit$summary(
+  variables = model013_ssvep_fit_relevant_parameters)
+
 # save models
 
 save(
@@ -1142,6 +1337,10 @@ save(
   model009_lpp_fit_summary,
   model009_ssvep_fit,
   model009_ssvep_fit_summary,
+  model011_lpp_fit,
+  model011_lpp_fit_summary,
+  model011_ssvep_fit,
+  model011_ssvep_fit_summary,
   file = paste0(parent_directory,"/paper_data_models/models/paper_models.RData"))
 
 save(
@@ -1181,7 +1380,59 @@ save(
   model009_lpp_fit_summary,
   model009_ssvep_fit,
   model009_ssvep_fit_summary,
+  model010_lpp_fit,
+  model010_lpp_fit_summary,
+  model010_ssvep_fit,
+  model010_ssvep_fit_summary,
+  model011_lpp_fit,
+  model011_lpp_fit_summary,
+  model011_ssvep_fit,
+  model011_ssvep_fit_summary,
   file = paste0(parent_directory,"/paper_data_models/models/models.RData"))
+
+model001_lpp_fit_loo <- model001_lpp_fit$loo()
+model002_lpp_fit_loo <- model002_lpp_fit$loo()
+model003_lpp_fit_loo <- model003_lpp_fit$loo()
+model004_lpp_fit_loo <- model004_lpp_fit$loo()
+model005_lpp_fit_loo <- model005_lpp_fit$loo()
+model006_lpp_fit_loo <- model006_lpp_fit$loo()
+model007_lpp_fit_loo <- model007_lpp_fit$loo()
+model008_lpp_fit_loo <- model008_lpp_fit$loo()
+model009_lpp_fit_loo <- model009_lpp_fit$loo()
+model010_lpp_fit_loo <- model010_lpp_fit$loo()
+model011_lpp_fit_loo <- model011_lpp_fit$loo()
+model012_lpp_fit_loo <- model012_lpp_fit$loo()
+model013_lpp_fit_loo <- model013_lpp_fit$loo()
+
+model001_ssvep_fit_loo <- model001_ssvep_fit$loo()
+model002_ssvep_fit_loo <- model002_ssvep_fit$loo()
+model003_ssvep_fit_loo <- model003_ssvep_fit$loo()
+model004_ssvep_fit_loo <- model004_ssvep_fit$loo()
+model005_ssvep_fit_loo <- model005_ssvep_fit$loo()
+model006_ssvep_fit_loo <- model006_ssvep_fit$loo()
+model007_ssvep_fit_loo <- model007_ssvep_fit$loo()
+model008_ssvep_fit_loo <- model008_ssvep_fit$loo()
+model009_ssvep_fit_loo <- model009_ssvep_fit$loo()
+model010_ssvep_fit_loo <- model010_ssvep_fit$loo()
+model011_ssvep_fit_loo <- model011_ssvep_fit$loo()
+model012_ssvep_fit_loo <- model012_ssvep_fit$loo()
+model013_ssvep_fit_loo <- model013_ssvep_fit$loo()
+
+loo::loo_compare(model003_lpp_fit_loo,
+                 model007_lpp_fit_loo,
+                 model011_lpp_fit_loo)
+
+loo::loo_model_weights(list(model003_lpp_fit_loo,
+                            model007_lpp_fit_loo,
+                            model011_lpp_fit_loo))
+
+loo::loo_compare(model003_ssvep_fit_loo,
+                 model007_ssvep_fit_loo,
+                 model011_ssvep_fit_loo)
+
+loo::loo_model_weights(list(model003_ssvep_fit_loo,
+                            model007_ssvep_fit_loo,
+                            model011_ssvep_fit_loo))
 
 
 # Old below this####

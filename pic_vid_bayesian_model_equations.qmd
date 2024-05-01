@@ -3,79 +3,157 @@ title: "Picture Video Bayesian Models"
 format: html
 ---
 
-## Model 1: Multilevel participant and stimuli predictors {style="text-align: center;"}
+
+## Model 1:<br>Multilevel Participant and Stimuli Predictors {style="text-align: center;"}
+
+Where ( $i$ ) indexes all observations, ( $j$ ) indexes all 45 participants, and ( $k$ ) indexes all 90 stimuli.
+
+$Amplitude$ is a vector of observed cortical amplitudes (either LPP or ssVEP).  
+$Par$ is a vector of a participant indices (1 to 45) for each $Amplitude$.  
+$Stim$ is a vector of stimuli indices (1 to 90) for each $Amplitude$.  
+
+### Linear Model (Likelihood) {style="text-align: center;"}
 
 $$
 \begin{gather}
-Where \ ( i ) \ indexes \ all \ observations, ( j ) \ indexes \ participants,\\ 
-and \ ( k ) \ indexes \ stimuli.
+Amplitude_{[i]} \sim Normal(\mu_{[i]},\sigma_{[Par[i]]}) \tag{1}\\
+\mu_{[i]} = \beta1_{[Par[i]]} + \beta2_{[Stim[i]]} \tag{2}
 \end{gather}
 $$
 
-### Linear model {style="text-align: center;"}
+### Adaptive Regularizing Priors {style="text-align: center;"}
+
+$$
+\begin{gather}
+\beta1_{[j]} \sim Normal(\bar{Par}, \sigma Par) \tag{3}\\
+\beta2_{[k]} \sim Normal(0, \sigma Stim) \tag{4}\\
+\sigma_{[j]} \sim Normal(\bar{\sigma}, \tau) \tag{5}
+\end{gather}
+$$
+
+### Uninformative Weak Priors {style="text-align: center;"}
+
+$$
+\begin{gather}
+\bar{Par} \sim Normal(\bar{Amplitude},2 \cdot SD(Amplitude)) \tag{6}\\
+\sigma Par,\sigma Stim,\bar{\sigma},\tau \sim HalfNormal(0,2 \cdot SD(Amplitude)) \tag{7}
+\end{gather}
+$$
+
+## Model 2:<br>Multilevel Amplitude and Arousal Bivariate Distribution {style="text-align: center;"}
+
+Where ( $i$ ) indexes all observations and ( $j$ ) indexes all 45 participants. 
+
+$Amplitude$ is a vector of observed cortical amplitudes (either LPP or ssVEP).  
+$Arousal$ is a vector of observed arousal ratings aligned with $Amplitude$.  
+$Par$ is a vector of a participant indices (1 to 45) for each $Amplitude$.
+
+### Bivariate Distribution (Likelihood) {style="text-align: center;"}
+
+$$
+\begin{gather}
+\begin{bmatrix}
+  Amplitude_{[i]} \\
+  Arousal_{[i]}
+\end{bmatrix} \sim MVNormal \left(
+\begin{bmatrix}
+  \mu Amp_{[Par[i]]} \\
+  \mu Aro_{[Par[i]]}
+\end{bmatrix},
+\begin{array}{c}
+{\huge \Sigma}_{[Par[i]]}
+\end{array}
+\right) \tag{1}\\
+\begin{array}{c}
+{\huge \Sigma}_{[Par[i]]}
+\end{array} = 
+\begin{bmatrix}
+\sigma Amp_{[Par[i]]}^2 & \sigma Amp Aro_{[Par[i]]} \\
+\sigma Amp Aro_{[Par[i]]} & \sigma Aro_{[Par[i]]}^2
+\end{bmatrix} \tag{2}
+\end{gather}
+$$
+
+
+
+
+
+### Adaptive Regularizing Priors {style="text-align: center;"}
+
+$$
+\begin{gather}
+\mu Amp_{[j]} \sim Normal(\bar{\mu Amp},\sigma Par Amp) \tag{3}\\
+\mu Aro_{[j]} \sim Normal(\bar{\mu Aro},\sigma Par Aro) \tag{4}\\
+\sigma Amp_{[j]} \sim Normal(\bar{\sigma Amp}, \tau ParAmp) \tag{5}\\
+\sigma Aro_{[j]} \sim Normal(\bar{\sigma Aro}, \tau ParAro) \tag{6}\\
+\sigma Amp Aro_{[j]} \sim Normal(\bar{\sigma Amp Aro}, \tau AmpAro) \tag{7}
+\end{gather}
+$$
+
+### Uninformative Weak Priors {style="text-align: center;"}
+
+$$
+\begin{gather}
+\bar{\mu Amp} \sim Normal(\bar{Amplitude},2 \cdot SD(Amplitude)) \tag{8}\\
+\sigma Par Amp,\bar{\sigma Amp},\tau ParAmp,\tau AmpAro \sim HalfNormal(0,2 \cdot SD(Amplitude)) \tag{9}\\
+\bar{\mu Aro} \sim (Beta(1.1,1.1) \cdot 8) + 1 \tag{10}\\
+\sigma Par Aro,\bar{\sigma Aro},\tau ParAro \sim HalfNormal(0,4) \tag{11}\\
+\bar{\sigma Amp Aro} \sim Normal(0,2 \cdot SD(Amplitude)) \tag{12}
+\end{gather}
+$$
+
+## Model 2 Amplitude log-likelihood equation{style="text-align: center;"}
+
+$$
+\begin{gather}
+\mu Amp \vert Arousal_{[i]} = \mu Amp_{[Par[i]]} + \frac {\sigma Amp Aro_{[Par[i]]}} {\sigma Aro_{[Par[i]]}^2} (Arousal_{[i]} - \mu Aro_{[Par[i]]}) \tag{1}\\
+\sigma Amp \vert Arousal_{[i]}^2 = \sigma Amp_{[Par[i]]}^2 - \frac {\sigma Amp Aro_{[Par[i]]}} {\sigma Aro_{[Par[i]]}^2} \tag{2}
+\end{gather}
+$$
+
+
+
+## Model 2: Multilevel Participant and Arousal Predictors {style="text-align: center;"}
+
+$$
+\begin{gather}
+Where \ ( i ) \ indexes \ all \ observations \ and \ ( j ) \ indexes \ 46 \ participants. \\
+Where \ ( Amplitude ) \ is \ a \ vector \ of \ observed \ cortical \ amplitudes. \\
+Where \ ( Par ) \ is \ a \ vector \ of \ participant \ indices \ for \ each \ amplitude. \\
+\end{gather} \\
+$$
+
+### Linear Model (Likelihood) {style="text-align: center;"}
 
 $$
 \begin{gather}
 Amplitude_{[i]} \sim Normal(\mu_{[i]},\sigma) \tag{1}\\
-\mu_{[i]} = \beta_{par[i]} + \beta_{stim[i]} \tag{2}
+\mu_{[i]} = \beta1_{[Par[i]]} + \beta2_{[Par[i]]} \cdot Arousal_{[i]} \tag{2}
 \end{gather}
 $$
 
-### Adaptive regularizing priors {style="text-align: center;"}
+### Adaptive Regularizing Priors {style="text-align: center;"}
 
 $$
 \begin{gather}
-\beta_{par[j]} \sim Normal(\hat{\bar{par}}, \sigma_{par}) \tag{3}\\
-\beta_{stim[k]} \sim Normal(0, \sigma_{stim}) \tag{4}
+\beta1_{[j]} \sim Normal(\bar{Par}, \sigma Par)  \tag{3}\\
+\beta2_{[j]} \sim Normal(\bar{\beta2}, \sigma Aro)  \tag{4}
 \end{gather}
 $$
 
-### Uninformative weak priors {style="text-align: center;"}
+### Uninformative Weak Priors {style="text-align: center;"}
 
 $$
 \begin{gather}
-\hat{\bar{par}} \sim Normal(\bar{par},2 \cdot SD(Amplitude)) \tag{5}\\
-\sigma,\sigma_{par},\sigma_{stim} \sim HalfNormal(0,2 \cdot SD(Amplitude)) \tag{6}
+\bar{Par} \sim Normal(\bar{Arousal},2 \cdot SD(Amplitude)) \tag{5}\\
+\bar{\beta2} \sim Normal(0, 2 \cdot SD(Amplitude)) \tag{6}\\
+\sigma,\sigma Par,\sigma Aro \sim HalfNormal(0,2 \cdot SD(Amplitude)) \tag{7}
 \end{gather}
 $$
 
-## Model 2: Multilevel participant and arousal predictors {style="text-align: center;"}
 
-$$
-\begin{gather}
-Where \ ( i ) \ indexes \ all \ observations\\ and ( j ) \ indexes \ participants.
-\end{gather}
-$$
 
-### Linear model {style="text-align: center;"}
-
-$$
-\begin{gather}
-Amplitude_{[i]} \sim Normal(\mu_{[i]},\sigma) \tag{1}\\
-\mu_{[i]} = \beta_{par[i]} + \beta arousal_{par[i]} \cdot Arousal_{[i]} \tag{2}
-\end{gather}
-$$
-
-### Adaptive regularizing priors {style="text-align: center;"}
-
-$$
-\begin{gather}
-\beta_{par[j]} \sim Normal(\hat{\bar{par}}, \sigma_{par})  \tag{3}\\
-\beta arousal_{par[j]} \sim Normal(\bar{aro \ cov}, \sigma_{aro})  \tag{4}
-\end{gather}
-$$
-
-### Uninformative weak priors {style="text-align: center;"}
-
-$$
-\begin{gather}
-\hat{\bar{par}} \sim Normal(\bar{par},2 \cdot SD(Amplitude)) \tag{5}\\
-\bar{aro \ cov} \sim Normal(0, 2 \cdot SD(Amplitude)) \tag{6}\\
-\sigma,\sigma_{par},\sigma_{aro} \sim HalfNormal(0,2 \cdot SD(Amplitude)) \tag{7}
-\end{gather}
-$$
-
-## Model 3: Multilevel participant and stimuli predictors {style="text-align: center;"}
+## Model 4: Multilevel participant and stimuli predictors {style="text-align: center;"}
 
 $$
 \begin{gather}

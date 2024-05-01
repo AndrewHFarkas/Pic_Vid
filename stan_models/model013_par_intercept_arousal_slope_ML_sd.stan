@@ -27,9 +27,12 @@ parameters {
   array[npar] real baro;
   real par_mean;
   real<lower = 0> par_sd;
+  array[npar] real <lower=0> par_sd_amp;
   real aro_cov;
   real<lower = 0> aro_sd;
   real<lower = 0> amp_sd;
+  real<lower = 0> par_amp_distribution_sd;
+  
 }
 
 // transformed parameters {
@@ -43,9 +46,9 @@ model {
   // declare priors
   // fixed uninformative
   par_mean ~ normal(amp_mean_prior, amp_sd_prior);
-  
-  // This is not actually covariance, should have better name
-  aro_cov ~ normal(0, amp_sd_prior);
+  amp_sd ~ normal(0, amp_sd_prior);
+  par_amp_distribution_sd ~ normal(0, amp_sd_prior);
+  aro_cov ~ normal(0, amp_sd_prior);// This is not actually covariance, should have better name
   par_sd ~ normal(0, amp_sd_prior);
   amp_sd ~ normal(0, amp_sd_prior);
   
@@ -54,14 +57,16 @@ model {
   // adaptive priors
   bpar ~ normal(par_mean, par_sd);
   baro ~ normal(aro_cov, aro_sd);
+  par_sd_amp ~ normal(amp_sd, par_amp_distribution_sd);
   
   // Pre-calculate mu vector
   array[nobs] real mu;
   
-  for (i in 1:nobs)
+  for (i in 1:nobs){
     mu[i] = bpar[par[i]] + baro[par[i]]*arousal[i];
+    amp[i] ~ normal(mu[i], par_sd_amp[par[i]]);
+  }
   
-  amp ~ normal(mu, amp_sd); // Vectorized likelihood
 }
 
 generated quantities {
@@ -81,7 +86,7 @@ generated quantities {
   
   for (i in 1:nobs) {
     mu_pred[i] = bpar[par[i]] + baro[par[i]]*arousal[i]; // Only if needed elsewhere in generated quantities
-    log_lik[i] = normal_lpdf(amp[i] | mu_pred[i], amp_sd); // Use pre-calculated mu values
+    log_lik[i] = normal_lpdf(amp[i] | mu_pred[i], par_sd_amp[par[i]]); // Use pre-calculated mu values
   }
 }
 
