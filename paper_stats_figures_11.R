@@ -3,7 +3,6 @@ library(patchwork)
 library(cmdstanr)
 library(plotrix)
 library(ggbeeswarm)
-library(gganimate)
 library(ggthemes)
 library(ggridges)
 library(grid)
@@ -75,13 +74,14 @@ if (dir.exists(sabat_data_folder)) {
 
 pic_vid_trial_data <- data.frame("par_id" = 1:50)
 
+
 # Bad participants
-no_pictures <- c(9)
-no_videos <- c(38)
-bad_participants <- c(9,38)
+no_pictures <- c(9) # corrupted file
+no_videos <- c(38) # pulled out of study, felt ill
+missing_over_50perc_from_valence_cat <- c(22,39,49)
+bad_participants <- c(no_pictures, no_videos, missing_over_50perc_from_valence_cat) 
 
 ## no picture participants were missing more than 50% for any valence
-# more_than_50_percent_of_video_trials_missing <- c(4, 22, 24, 25, 39, 45, 49, 50) # this is total trials, not per valence
 
 pic_vid_trial_data <- pic_vid_trial_data %>% 
   filter(!par_id %in% c(no_pictures, no_videos))
@@ -533,6 +533,65 @@ model011_ssvep_fit_loo <- model011_ssvep_fit$loo()
 model012_lpp_fit_loo <- model012_lpp_fit$loo()
 model012_ssvep_fit_loo <- model012_ssvep_fit$loo()
 
+# Loo ####
+
+loo::loo_compare(model011_lpp_fit_loo,
+                 model012_lpp_fit_loo)
+
+loo::loo_model_weights(list(model011_lpp_fit_loo,
+                            model012_lpp_fit_loo))
+
+loo::loo_compare(model011_ssvep_fit_loo,
+                 model012_ssvep_fit_loo)
+
+loo::loo_model_weights(list(model011_ssvep_fit_loo,
+                            model012_ssvep_fit_loo))
+
+# Loo without problematic observations, doesn't make a difference
+lpp_good_indice <- which(model012_lpp_fit_loo$pointwise[,5] < .5)
+
+ssvep_good_indice <- which(model012_ssvep_fit_loo$pointwise[,5] < .5)
+
+lpp_good_indice_names <- paste0("log_lik[",lpp_good_indice,"]")
+
+ssvep_good_indice_names <- paste0("log_lik[",ssvep_good_indice,"]")
+
+model011_lpp_fit_loo_no_outliers <- model011_lpp_fit$loo(variables = lpp_good_indice_names)
+
+model012_lpp_fit_loo_no_outliers <- model012_lpp_fit$loo(variables = lpp_good_indice_names)
+
+model011_ssvep_fit_loo_no_outliers <- model011_ssvep_fit$loo(variables = ssvep_good_indice_names)
+
+model012_ssvep_fit_loo_no_outliers <- model012_ssvep_fit$loo(variables = ssvep_good_indice_names)
+
+loo::loo_compare(model011_lpp_fit_loo,
+                 model012_lpp_fit_loo)
+
+loo::loo_compare(model011_lpp_fit_loo_no_outliers,
+                 model012_lpp_fit_loo_no_outliers)
+
+loo::loo_model_weights(list(model011_lpp_fit_loo,
+                            model012_lpp_fit_loo))
+
+loo::loo_model_weights(list(model011_lpp_fit_loo_no_outliers,
+                            model012_lpp_fit_loo_no_outliers))
+
+loo::loo_compare(model011_ssvep_fit_loo,
+                 model012_ssvep_fit_loo)
+
+loo::loo_compare(model011_ssvep_fit_loo_no_outliers,
+                 model012_ssvep_fit_loo_no_outliers)
+
+loo::loo_model_weights(list(model011_ssvep_fit_loo,
+                            model012_ssvep_fit_loo))
+
+loo::loo_model_weights(list(model011_ssvep_fit_loo_no_outliers,
+                            model012_ssvep_fit_loo_no_outliers))
+
+
+
+
+
 loo::loo_compare(model003_lpp_fit_loo,
                  model007_lpp_fit_loo,
                  model009_lpp_fit_loo)
@@ -585,13 +644,6 @@ loo::loo_model_weights(list(#model003_lpp_fit_loo,
                             model011_lpp_fit_loo,
                             model012_lpp_fit_loo))
 
-loo::loo_compare(model003_ssvep_fit_loo,
-                 model011_ssvep_fit_loo,
-                 model012_ssvep_fit_loo)
-
-loo::loo_model_weights(list(#model003_ssvep_fit_loo,
-                            model011_ssvep_fit_loo,
-                            model012_ssvep_fit_loo))
 
 loo::loo_compare(model003_lpp_fit_loo,
                  model007_lpp_fit_loo,
@@ -691,6 +743,31 @@ loo::loo_model_weights(list(model001_ssvep_fit_loo,
                             model010_ssvep_fit_loo,
                             model011_ssvep_fit_loo))
 
+median(model011_lpp_fit_draws$mu_cov_amp_aro/
+  (model011_lpp_fit_draws$mu_par_sd_amp * model011_lpp_fit_draws$mu_par_sd_aro))
+
+quantile(model011_lpp_fit_draws$mu_cov_amp_aro/
+  (model011_lpp_fit_draws$mu_par_sd_amp * model011_lpp_fit_draws$mu_par_sd_aro),
+  probs = c(.025, .975))
+
+median(model011_ssvep_fit_draws$mu_cov_amp_aro/
+  (model011_ssvep_fit_draws$mu_par_sd_amp * model011_ssvep_fit_draws$mu_par_sd_aro))
+
+quantile(model011_ssvep_fit_draws$mu_cov_amp_aro/
+  (model011_ssvep_fit_draws$mu_par_sd_amp * model011_ssvep_fit_draws$mu_par_sd_aro),
+  probs = c(.025, .975))
+
+median((model011_lpp_fit_draws$mu_cov_amp_aro/
+  (model011_lpp_fit_draws$mu_par_sd_amp * model011_lpp_fit_draws$mu_par_sd_aro)) +
+  (model011_ssvep_fit_draws$mu_cov_amp_aro/
+     (model011_ssvep_fit_draws$mu_par_sd_amp * model011_ssvep_fit_draws$mu_par_sd_aro)) )
+
+sum((model011_lpp_fit_draws$mu_cov_amp_aro/
+  (model011_lpp_fit_draws$mu_par_sd_amp * model011_lpp_fit_draws$mu_par_sd_aro)) +
+  (model011_ssvep_fit_draws$mu_cov_amp_aro/
+     (model011_ssvep_fit_draws$mu_par_sd_amp * model011_ssvep_fit_draws$mu_par_sd_aro)) < 0) /80000
+
+
 # Standard ANOVAs and t-tests####
 amp_cate_type_aov <- data_for_stan_df %>%
   select(par,type,cate,amp) %>% 
@@ -704,7 +781,54 @@ amp_cate_type_aov <- data_for_stan_df %>%
                id = "par")
 
 amp_cate_type_aov
+summary(amp_cate_type_aov)
 effectsize::eta_squared(amp_cate_type_aov)
+
+amp_cate_scene_aov <- data_for_stan_df %>%
+  select(par,type,cate,amp) %>% 
+  group_by(par,type,cate) %>%
+  summarise_all(mean) %>% 
+  mutate(zamp = as.vector(scale(amp))) %>% 
+  ungroup() %>% 
+  mutate(zamp = if_else(type == 2, -1*zamp, zamp)) %>% 
+  filter(type == 1) %>% 
+  afex::aov_ez(data = ., dv = "zamp", 
+               within = c( "cate"),
+               id = "par")
+
+amp_cate_scene_aov
+summary(amp_cate_scene_aov)
+effectsize::eta_squared(amp_cate_scene_aov)
+
+amp_cate_video_aov <- data_for_stan_df %>%
+  select(par,type,cate,amp) %>% 
+  group_by(par,type,cate) %>%
+  summarise_all(mean) %>% 
+  mutate(zamp = as.vector(scale(amp))) %>% 
+  ungroup() %>% 
+  mutate(zamp = if_else(type == 2, -1*zamp, zamp)) %>% 
+  filter(type == 2) %>% 
+  afex::aov_ez(data = ., dv = "zamp", 
+               within = c( "cate"),
+               id = "par")
+
+amp_cate_video_aov
+summary(amp_cate_video_aov)
+effectsize::eta_squared(amp_cate_video_aov)
+
+
+data_for_stan_df %>%
+  select(par,type,cate,amp) %>% 
+  group_by(par,type,cate) %>%
+  summarise_all(mean) %>% 
+  mutate(zamp = as.vector(scale(amp))) %>% 
+  ungroup() %>% 
+  mutate(zamp = if_else(type == 2, -1*zamp, zamp)) %>% 
+  group_by(type, cate) %>% 
+  summarise(mean_zamp = mean(zamp),
+            se_zamp = plotrix::std.error(zamp))
+
+
 
 aro_cate_type_aov <- data_for_stan_df %>%
   select(par,type,cate,arousal) %>% 
@@ -787,13 +911,13 @@ effectsize::cohens_d(scene_SAM_cate_avg$arousal[scene_SAM_cate_avg$cate == 3],
 
 scene_SAM_cate_avg %>% 
   group_by(cate) %>% 
-  summarise(mean_aro = mean(arousal),
-            se_aro = plotrix::std.error(arousal))
+  summarise(mean_aro = mean(valence),
+            se_aro = plotrix::std.error(valence))
 
 video_SAM_cate_avg %>% 
   group_by(cate) %>% 
-  summarise(mean_aro = mean(arousal),
-            se_aro = plotrix::std.error(arousal))
+  summarise(mean_aro = mean(valence),
+            se_aro = plotrix::std.error(valence))
 
 val_cate_type_aov <- data_for_stan_df %>%
   select(par,type,cate,valence) %>% 
@@ -808,35 +932,58 @@ val_cate_type_aov
 summary(val_cate_type_aov)
 effectsize::eta_squared(val_cate_type_aov)
 
-aro_cate_scene_aov <- data_for_stan_df %>%
-  select(par,type,cate,arousal) %>% 
+val_cate_scene_aov <- data_for_stan_df %>%
+  select(par,type,cate,valence) %>% 
   filter(type == 1) %>% 
   group_by(par,type,cate) %>%
   summarise_all(mean) %>% 
   ungroup() %>% 
-  afex::aov_ez(data = ., dv = "arousal", 
+  afex::aov_ez(data = ., dv = "valence", 
                within = c("cate"),
                id = "par")
 
-aro_cate_scene_aov
-summary(aro_cate_scene_aov)
-effectsize::eta_squared(aro_cate_scene_aov)
+val_cate_scene_aov
+summary(val_cate_scene_aov)
+effectsize::eta_squared(val_cate_scene_aov)
 
-aro_cate_video_aov <- data_for_stan_df %>%
-  select(par,type,cate,arousal) %>% 
+val_cate_video_aov <- data_for_stan_df %>%
+  select(par,type,cate,valence) %>% 
   filter(type == 2) %>% 
   group_by(par,type,cate) %>%
   summarise_all(mean) %>% 
   ungroup() %>% 
-  afex::aov_ez(data = ., dv = "arousal", 
+  afex::aov_ez(data = ., dv = "valence", 
                within = c("cate"),
                id = "par")
 
-aro_cate_video_aov
-summary(aro_cate_video_aov)
-effectsize::eta_squared(aro_cate_video_aov)
+val_cate_video_aov
+summary(val_cate_video_aov)
+effectsize::eta_squared(val_cate_video_aov)
 
-  
+t.test(scene_SAM_cate_avg$valence[scene_SAM_cate_avg$cate == 1],
+       video_SAM_cate_avg$valence[video_SAM_cate_avg$cate == 1],
+       paired = T)  
+
+effectsize::cohens_d(scene_SAM_cate_avg$valence[scene_SAM_cate_avg$cate == 1],
+                     video_SAM_cate_avg$valence[video_SAM_cate_avg$cate == 1],
+                     paired = T)  
+
+t.test(scene_SAM_cate_avg$valence[scene_SAM_cate_avg$cate == 2],
+       video_SAM_cate_avg$valence[video_SAM_cate_avg$cate == 2],
+       paired = T)  
+
+effectsize::cohens_d(scene_SAM_cate_avg$valence[scene_SAM_cate_avg$cate == 2],
+                     video_SAM_cate_avg$valence[video_SAM_cate_avg$cate == 2],
+                     paired = T)  
+
+t.test(scene_SAM_cate_avg$valence[scene_SAM_cate_avg$cate == 3],
+       video_SAM_cate_avg$valence[video_SAM_cate_avg$cate == 3],
+       paired = T)  
+
+effectsize::cohens_d(scene_SAM_cate_avg$valence[scene_SAM_cate_avg$cate == 3],
+                     video_SAM_cate_avg$valence[video_SAM_cate_avg$cate == 3],
+                     paired = T)
+
 ## R^2 ####
 
 ### R^2 using residuals for full model
@@ -1104,6 +1251,44 @@ model_R2_posteriors %>%
   # geom_density(aes(x = model012_ssvep_R2_stim), color = "black") +
   theme_classic()
 
+median(model_R2_posteriors$model011_lpp_R2)
+
+quantile(model_R2_posteriors$model011_lpp_R2, 
+         probs = c(.025, .975))
+
+median(model_R2_posteriors$model012_lpp_R2)
+
+quantile(model_R2_posteriors$model012_lpp_R2, 
+         probs = c(.025, .975))
+
+median(model_R2_posteriors$model011_ssvep_R2)
+
+quantile(model_R2_posteriors$model011_ssvep_R2, 
+         probs = c(.025, .975))
+
+median(model_R2_posteriors$model012_ssvep_R2)
+
+quantile(model_R2_posteriors$model012_ssvep_R2, 
+         probs = c(.025, .975))
+# model 11 arousal, minus effect of participant
+median(hold_lpp_bayesian_R_squared)
+quantile(hold_lpp_bayesian_R_squared, 
+         probs = c(.025, .975))
+median(hold_ssvep_bayesian_R_squared)
+quantile(hold_ssvep_bayesian_R_squared, 
+         probs = c(.025, .975))
+
+# Model 12 stim, minus effect of participant
+
+median(model_R2_posteriors$model012_lpp_R2_stim)
+
+quantile(model_R2_posteriors$model012_lpp_R2_stim, 
+         probs = c(.025, .975))
+
+median(model_R2_posteriors$model012_ssvep_R2_stim)
+
+quantile(model_R2_posteriors$model012_ssvep_R2_stim, 
+         probs = c(.025, .975))
 
 # Remove effect of Par R-squared
 
@@ -1126,6 +1311,8 @@ model_R2_posteriors %>%
   geom_density(aes(x = model012_ssvep_R2_stim), color = "blue") +
    coord_cartesian(xlim = c(0,.10)) +
   theme_classic())
+
+
 
 # Loo R^2 I can't generalize this to predictors so I am not going to include this.
 
@@ -1769,6 +1956,7 @@ text_size <- 25
 legend_tite_text_size <- 30
 axis_line_thickness <- 1
 valence_colors <- c("blue1","black", "red1", "white")
+# valence_colors <- c("blue1","gray", "red1", "white")
 color_blind_valence_colors <- c("#0072B2","#009E73","#D55E00","ivory4")
 
 
@@ -1816,19 +2004,19 @@ arousal_plot <- gm_ratings_long %>%
             label = "Unpleasant",
             fontface = "bold", 
             family = "Arial",
-            color = "red1",
+            color = valence_colors[3],
             size = 10) +
   geom_text(aes(x = 2, y = 1.5), 
             label = "Neutral",
             fontface = "bold", 
             family = "Arial",
-            color = "black",
+            color = valence_colors[2],
             size = 10) +
   geom_text(aes(x = 2, y = 2), 
             label = "Pleasant",
             fontface = "bold", 
             family = "Arial",
-            color = "blue1",
+            color = valence_colors[1],
             size = 10) +
   scale_y_continuous(breaks = ratings_cat_breaks,
                      limits = ratings_cat_limits,
@@ -2106,11 +2294,11 @@ for (i in 1:90) {
     readJPEG() %>% 
     rasterGrob(interpolate=TRUE)
   if (arousal_by_modality$Stim_cat[i] == "Pleasant"){
-    current_val_color = "blue1"
+    current_val_color = valence_colors[1]
   } else if (arousal_by_modality$Stim_cat[i] == "Neutral"){
     current_val_color = "black"
   } else {
-    current_val_color = "red1"
+    current_val_color = valence_colors[3]
   }
   
   arousal_raster <- arousal_raster + 
@@ -2245,11 +2433,11 @@ valence_colors <- c("blue1","black", "red1", "white")
 
 
 gm_amp_dot_plot <- ggplot(gm_amp_long) +
-  geom_line(aes(x = category,
-                y = mean_amp, 
-                group = erp_type),
-            linetype = "dotted",
-            position = position_dodge(width = 0.4)) + 
+  # geom_line(aes(x = category,
+  #               y = mean_amp, 
+  #               group = erp_type),
+  #           linetype = "dotted",
+  #           position = position_dodge(width = 0.4)) + 
   geom_pointrange(aes(x = category, shape = erp_type,
                       y = mean_amp, ymax = mean_amp + se_amp,
                       ymin = mean_amp - se_amp),
@@ -2404,6 +2592,19 @@ ratings_erps_path_by_scene %>%
   filter(Stim_type =="Video") %>% 
   summarise(correlation_test = list(cor.test(.$zscore_amp, .$mean_aro))) %>% 
   pull(correlation_test)
+
+lm_arousal_amp_type_interaction <- ratings_erps_path_by_scene %>% 
+  mutate(zscore_amp = case_when(
+    Stim_type == "Video" ~ -1*zscore_amp,
+    Stim_type == "Pics" ~ zscore_amp
+  )) %>% 
+  lm(zscore_amp ~ mean_aro + Stim_type + mean_aro*Stim_type, 
+     data = .)
+
+summary(lm_arousal_amp_type_interaction)
+anova(lm_arousal_amp_type_interaction)
+effectsize::eta_squared(lm_arousal_amp_type_interaction)
+
 
 dot_size <- 7
 dodge_size <- .7
@@ -2608,6 +2809,12 @@ lpp_valence_posteriors <-
                                   "unpleasant",
                                   "emotional_difference"))) 
 
+lpp_valence_posteriors %>% 
+  group_by(name) %>% 
+  summarise(median_amp = median(value),
+            q2_5 = quantile(value, probs = .025),
+            q97_5 = quantile(value, probs = .975))
+
 ssvep_valence_posteriors <- 
   #model003_ssvep_fit_draws %>% 
   model012_ssvep_fit_draws %>%  
@@ -2639,18 +2846,24 @@ ssvep_valence_posteriors <-
                                   "emotional_difference"))) 
 
 
+ssvep_valence_posteriors %>% 
+  group_by(name) %>% 
+  summarise(median_amp = median(value),
+            q2_5 = quantile(value, probs = .025),
+            q97_5 = quantile(value, probs = .975))
+
 #plot elements
 par_fill <- "gold1"
-# valence_colors <- c("#0072B2","#009E73","#D55E00","ivory4")
+valence_colors <- c("blue1","gray", "red1", "white")
 
-line_thickness <- 2
+line_thickness <- 1
 density_line_thickness <- 1
 panel.grid.major.x_line_thickness <- .5
 par_pos_scale <- 2
 par_pos_y_limits <- c(.75, 47.5)
 ssvep_par_breaks_labels <- seq(.4, 1.6, by = .2)
 par_alpha <- .8
-font_size <- 22
+font_size <- 20
 font_font <- "Arial"
 
 # layout_grid <- c("
@@ -2722,7 +2935,41 @@ font_font <- "Arial"
 # eg
 # ")
 
+# layout_grid <- c("
+# aa
+# bc
+# bc
+# bc
+# bc
+# bc
+# bc
+# bc
+# bc
+# bc
+# bc
+# bc
+# bc
+# df
+# df
+# df
+# df
+# df
+# df
+# df
+# df
+# df
+# df
+# df
+# df
+# df
+# df
+# eg
+# eg
+# eg
+# ")
+
 layout_grid <- c("
+aa
 aa
 bc
 bc
@@ -2736,8 +2983,7 @@ bc
 bc
 bc
 bc
-df
-df
+bc
 df
 df
 df
@@ -2775,7 +3021,7 @@ guide_area() +
                      breaks = seq(-2, 2, by = 1),
                      labels = seq(-2, 2, by = 1),
                      expand = c(0,0)) +
-  scale_y_continuous(expand = c(0,0.02)) +
+  scale_y_continuous(expand = c(0,0.007)) +
   coord_cartesian(xlim = c(-2.5,2.5)) +
   ggtitle("LPP Valence Posteriors") +
   theme_classic()+
@@ -2867,7 +3113,7 @@ guide_area() +
   geom_vline(aes(xintercept = 
                    # mean(model003_lpp_fit_draws$par_mean)),
                    mean(model012_lpp_fit_draws$par_mean)),
-             linewidth = line_thickness) +
+             linewidth = density_line_thickness) +
   geom_density_ridges(aes(x = value, 
                           y = name),
                       alpha = par_alpha,
@@ -2960,7 +3206,7 @@ model012_ssvep_fit_draws %>%
   geom_vline(aes(xintercept = 
                    # mean(model003_ssvep_fit_draws$par_mean)),
                    mean(model012_ssvep_fit_draws$par_mean)),
-             linewidth = line_thickness) +
+             linewidth = density_line_thickness) +
   geom_density_ridges(aes(x = value, 
                           y = name),
                       alpha = par_alpha,
@@ -3051,12 +3297,18 @@ model012_ssvep_fit_draws %>%
 
 
 
-
 ggsave(filename = paste0(parent_directory, 
                          "/misc/006figure_model1_valence_pos_model12.tiff"),
        device = "tiff",dpi = 300,
-       units = "in",height = 11, width = 8.5,
+       units = "in",height = 8, width = 8,
        scale = 1.275)
+
+# ggsave(filename = paste0(parent_directory, 
+#                          "/misc/006figure_model1_valence_pos_model12.tiff"),
+#        device = "tiff",dpi = 300,
+#        units = "in",height = 11, width = 8.5,
+#        scale = 1.275)
+
 
 # ggsave(filename = paste0(parent_directory, 
 #                          "/misc/006figure_model1_valence_pos.svg"),
@@ -3126,7 +3378,11 @@ lpp_erot_surg_val_posteriors <-
                                   "unpleasant",
                                   "surgery")))
 
-
+lpp_erot_surg_val_posteriors %>% 
+  group_by(name) %>% 
+  summarise(median_amp = median(value),
+            q2_5 = quantile(value, probs = .025),
+            q97_5 = quantile(value, probs = .975))
 
 ssvep_erot_surg_val_posteriors <- 
   # model003_ssvep_fit_draws %>% 
@@ -3149,6 +3405,12 @@ ssvep_erot_surg_val_posteriors <-
                                   "neutral",
                                   "unpleasant",
                                   "surgery")))
+
+ssvep_erot_surg_val_posteriors %>% 
+  group_by(name) %>% 
+  summarise(median_amp = median(value),
+            q2_5 = quantile(value, probs = .025),
+            q97_5 = quantile(value, probs = .975))
 
 # layout_grid = c("
 # A
@@ -3174,7 +3436,7 @@ B
 
 fig7_colors <- c("darkblue",
                  "blue1", 
-                 "black", 
+                 "gray", 
                  "red1", 
                  "darkred")
 
@@ -3333,7 +3595,7 @@ fig7_ssvep_bottom <- ssvep_erot_surg_val_posteriors %>%
             label = "Neutral",
             fontface = "bold",
             family = "Arial",
-            color = "black",
+            color = "gray",
             size = 10) +
   geom_text(aes(x = -.06, y = 44),
             label = "Unpleasant",
@@ -3380,7 +3642,7 @@ fig7_ssvep_bottom <- ssvep_erot_surg_val_posteriors %>%
 
 fig7_lpp_top + fig7_ssvep_bottom +
   plot_layout(design = layout_grid, guides = "collect")  +
-  plot_annotation(title = "Video ssVEP Did Not Feature Typical Erotic and Gore Bias",
+  plot_annotation(title = "Video-ssVEP Lacks Typical Erotic and Gore Sensitivity",
                   theme = theme(
                     plot.title = element_text(family = font_font,
                                               size = font_size + 2.65,

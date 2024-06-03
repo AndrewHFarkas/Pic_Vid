@@ -3,7 +3,6 @@ library(patchwork)
 library(cmdstanr)
 library(plotrix)
 library(ggbeeswarm)
-library(gganimate)
 library(ggthemes)
 #package used for anova
 library(afex)

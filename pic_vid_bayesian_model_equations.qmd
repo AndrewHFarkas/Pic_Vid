@@ -111,6 +111,12 @@ $$
 \end{gather}
 $$
 
+## R^2 formula
+
+$$
+R^2 = \frac {\text{variance of predicted observations}} {(\text{variance of predicted observations } + \text{residual variance})}
+$$
+
 
 
 ## Model 2: Multilevel Participant and Arousal Predictors {style="text-align: center;"}
