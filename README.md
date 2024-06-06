@@ -70,7 +70,7 @@ This MATLAB code uses EMEGS functions to create the csv as a series of average f
 
 # Step 10 - Stan model fitting
 
-In the second half of the manuscript, the data will be looked at by-trial via 2 Stan Bayesian multi-level models. Here the data is organized an the models are fit. Currently there is a lot in this script because I tried many different models. Final models will be model003 (multi-level category prediction) and model007 (multi-level arousal rating prediction)
+In the second half of the manuscript, the data will be looked at by-trial via 2 Stan Bayesian multilevel models. Here the data is organized an the models are fit. Currently there is a lot in this script because I tried many different models. Final models will be model012 (multilevel participant stimuli prediction) and model011 (multilevel bivariate Amplitude Arousal rating prediction)
 
 # Step 11 - Manuscript statistics and figures
 
