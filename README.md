@@ -1,6 +1,4 @@
-# Pic_Vid
-
-## Matt Gehr's dissertation project
+# The Pic Vid Project
 
 Here are the steps to recreate the analyses from the Pic_Vid study from raw bdf files to final statistics.
 
@@ -76,6 +74,6 @@ In the second half of the manuscript, the data will be looked at by-trial via 2 
 
 # Step - 11 Manuscript statistics and figures
 
-Here is where all the final analyses and figure will be written for the manuscript.
+Here is were most of the final figures and analyses were done.
 
 
