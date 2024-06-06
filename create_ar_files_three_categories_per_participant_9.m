@@ -1,4 +1,5 @@
 
+
 %% 
 
 % three_cats_per_par = readtable("/Volumes/startech3TB_bkup/research_data/Pic_Vid/misc/by_categorey_3_from_by_scene.csv");
@@ -27,22 +28,10 @@ for file_index = 1:number_of_files_to_generate
 
     current_mat = ssvep_mat(start_index:end_index, :);
 
+    % Function found at emegs3.2/emegs2dLib
     WriteMat2At(current_mat, out_file_path, [], 512, [], [], [], trigger_point)
 
     start_index = start_index + number_of_sensors;
     end_index = end_index + number_of_sensors;
 end
  
-%% 
-
-
-
-
-
-
-
-
-
-
-
-%% 

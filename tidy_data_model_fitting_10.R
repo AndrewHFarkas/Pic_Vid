@@ -1,11 +1,5 @@
 library(tidyverse)
-library(patchwork)
 library(cmdstanr)
-library(plotrix)
-library(ggbeeswarm)
-library(ggthemes)
-#package used for anova
-library(afex)
 
 # Load and tidy data ####
 ## All this data prep should be shorted and put in its own script
@@ -161,13 +155,6 @@ demographic_information <- read.csv(paste0(parent_directory, "/misc/Participant_
   select(-Par_id) %>% 
   filter(!par_id %in% bad_participants)
 
-demographic_information %>% pull(age) %>% summary()
-demographic_information %>% pull(age) %>% sd(na.rm = T)
-
-demographic_information %>% pull(sex) %>% table()
-
-demographic_information %>% pull(race.ethnicity) %>% table()
-
 # Ratings data ####
 ratings_data <- read.csv(paste0(parent_directory, "/misc/ratings_by_par_by_scene.csv")) %>% 
   mutate(par_id = stringr::str_extract(Par_id, "\\d+") %>% as.numeric(),
@@ -178,7 +165,6 @@ ratings_data <- read.csv(paste0(parent_directory, "/misc/ratings_by_par_by_scene
                            levels = c("Pleasant",
                                       "Neutral",
                                       "Unpleasant")))
-
 
 # Load in ssVEP LPP ####
 
@@ -552,12 +538,13 @@ data_list_for_stan_ssvep$arousal = data_for_stan_df[data_for_stan_df$type == 2,]
 # Fit models ####
 # fit ssvep and lpp separately, but use same model for each
 
+## Model sampling options ####
 posterior_samples_per_chain <- 10000
 number_of_chains <- 8 # 8 performance cores on mac
 number_of_parallel_chains <- ifelse(parallel::detectCores() > 8, 8, 4)
 
 
-## par intercept ####
+## 1 par intercept ####
 model_name <- "model001_par_intercept"
 
 model001_path <- paste0(pic_vid_repository,
@@ -618,7 +605,7 @@ model001_ssvep_fit_summary <- model001_ssvep_fit$summary(
   variables = model001_ssvep_fit_relevant_parameters)
 
 
-## par and cate intercepts ####
+## 2 par and cate intercepts ####
 
 model_name <- "model002_par_cate_intercepts"
 
@@ -679,7 +666,7 @@ model002_ssvep_fit_summary <- model002_ssvep_fit$summary(
   variables = model002_ssvep_fit_relevant_parameters)
 
 
-## par and stim intercepts ####
+## 3 par and stim intercepts ####
 
 model_name <- "model003_par_stim_intercepts"
 
@@ -743,10 +730,7 @@ model003_ssvep_fit_summary <- model003_ssvep_fit$summary(
   variables = model003_ssvep_fit_relevant_parameters)
 
 
-
-
-
-## par intercept, arousal slope ####
+## 4 par intercept, arousal slope ####
 
 model_name <- "model004_par_intercept_arousal_slope"
 
@@ -808,12 +792,18 @@ model004_ssvep_fit_summary <- model004_ssvep_fit$summary(
   variables = model004_ssvep_fit_relevant_parameters)
 
 
-# par and cate intercepts, arousal slope
+## 5 par and cate intercepts, arousal slope ####
 
-model005_path <- paste0(pic_vid_repository,
+model_name <- paste0(pic_vid_repository,
                         "/stan_models/model005_par_cate_intercepts_arousal_slope.stan")
 
-model005 <- cmdstan_model(model005_path, force_recompile = T)
+model005 <- cmdstan_model(model_name, force_recompile = T)
+
+# Clear previous chains
+list.files(path = paste0(parent_directory,"/paper_data_models/models/chains/"),
+           pattern = model_name,
+           full.names = T) %>% 
+  file.remove()
 
 model005_lpp_fit <- model005$sample(
   data = data_list_for_stan_lpp,
@@ -861,12 +851,18 @@ model005_ssvep_fit_summary <- model005_ssvep_fit$summary(
   variables = model005_ssvep_fit_relevant_parameters)
 
 
-# par and stim intercepts, arousal slope
+## 6 par and stim intercepts, arousal slope ####
 
-model006_path <- paste0(pic_vid_repository,
+model_name <- paste0(pic_vid_repository,
                         "/stan_models/model006_par_stim_intercepts_arousal_slope.stan")
 
-model006 <- cmdstan_model(model006_path, force_recompile = T)
+model006 <- cmdstan_model(model_name, force_recompile = T)
+
+# Clear previous chains
+list.files(path = paste0(parent_directory,"/paper_data_models/models/chains/"),
+           pattern = model_name,
+           full.names = T) %>% 
+  file.remove()
 
 model006_lpp_fit <- model006$sample(
   data = data_list_for_stan_lpp,
@@ -912,7 +908,7 @@ model006_lpp_fit_summary <- model006_lpp_fit$summary(
 model006_ssvep_fit_summary <- model006_ssvep_fit$summary(
   variables = model006_ssvep_fit_relevant_parameters)
 
-# multi-level correlation
+## 7 multi-level par intercept arousal slope ####
 
 model_name <- "model007_par_intercept_arousal_slope_ML"
 
@@ -973,11 +969,17 @@ model007_lpp_fit_summary <- model007_lpp_fit$summary(
 model007_ssvep_fit_summary <- model007_ssvep_fit$summary(
   variables = model007_ssvep_fit_relevant_parameters)
 
-#
-model008_path <- paste0(pic_vid_repository,
+## 8 par cat intercepts and ml arousal slope ####
+model_name <- paste0(pic_vid_repository,
                         "/stan_models/model008_par_cate_intercepts_arousal_slope_ML.stan")
 
-model008 <- cmdstan_model(model008_path, force_recompile = T)
+model008 <- cmdstan_model(model_name, force_recompile = T)
+
+# Clear previous chains
+list.files(path = paste0(parent_directory,"/paper_data_models/models/chains/"),
+           pattern = model_name,
+           full.names = T) %>% 
+  file.remove()
 
 model008_lpp_fit <- model008$sample(
   data = data_list_for_stan_lpp,
@@ -1023,11 +1025,17 @@ model008_lpp_fit_summary <- model008_lpp_fit$summary(
 model008_ssvep_fit_summary <- model008_ssvep_fit$summary(
   variables = model008_ssvep_fit_relevant_parameters)
 
-# 9
-model009_path <- paste0(pic_vid_repository,
+## 9 par stim intercepts ml arousal slope ####
+model_name <- paste0(pic_vid_repository,
                         "/stan_models/model009_par_stim_intercepts_arousal_slope_ML.stan")
 
-model009 <- cmdstan_model(model009_path, force_recompile = T)
+model009 <- cmdstan_model(model_name, force_recompile = T)
+
+# Clear previous chains
+list.files(path = paste0(parent_directory,"/paper_data_models/models/chains/"),
+           pattern = model_name,
+           full.names = T) %>% 
+  file.remove()
 
 model009_lpp_fit <- model009$sample(
   data = data_list_for_stan_lpp,
@@ -1075,7 +1083,7 @@ model009_ssvep_fit_summary <- model009_ssvep_fit$summary(
 
 
 
-# Test model that doesn't use par intercept for arousal prediction####
+## 10 same as 7 rephrased####
 model_name <- "model010_007_but_different_standard_beta"
 
 model010_path <- paste0(pic_vid_repository,
@@ -1135,7 +1143,7 @@ model010_lpp_fit_summary <- model010_lpp_fit$summary(
 model010_ssvep_fit_summary <- model010_ssvep_fit$summary(
   variables = model010_ssvep_fit_relevant_parameters)
 
-# Multi-level participant clusters ####
+## 11 Multi-level participant clusters ####
 model_name <- "model011_ML_bivariate_normal_amp_arousal"
 
 model011_path <- paste0(pic_vid_repository,
@@ -1197,7 +1205,7 @@ model011_lpp_fit_summary <- model011_lpp_fit$summary(
 model011_ssvep_fit_summary <- model011_ssvep_fit$summary(
   variables = model011_ssvep_fit_relevant_parameters)
 
-# Par and Stim predictors were each participant has their own amp SD ####
+## 12 Par and Stim predictors were each participant has their own amp SD ####
 model_name <- "model012_par_stim_intercepts_MLsd"
 
 model012_path <- paste0(pic_vid_repository,
@@ -1259,7 +1267,7 @@ model012_lpp_fit_summary <- model012_lpp_fit$summary(
 model012_ssvep_fit_summary <- model012_ssvep_fit$summary(
   variables = model012_ssvep_fit_relevant_parameters)
 
-# Multi-level participant clusters ####
+## 13 Multi-level participant clusters ####
 model_name <- "model013_par_intercept_arousal_slope_ML_sd"
 
 model013_path <- paste0(pic_vid_repository,
@@ -1321,1190 +1329,97 @@ model013_lpp_fit_summary <- model013_lpp_fit$summary(
 model013_ssvep_fit_summary <- model013_ssvep_fit$summary(
   variables = model013_ssvep_fit_relevant_parameters)
 
-# save models
+# Save data ####
+demographic_information$stan_par_id <- 1:45
 
-save(
-  model003_lpp_fit,
-  model003_lpp_fit_summary,
-  model003_ssvep_fit,
-  model003_ssvep_fit_summary,
-  model007_lpp_fit,
-  model007_lpp_fit_summary,
-  model007_ssvep_fit,
-  model007_ssvep_fit_summary,
-  model009_lpp_fit,
-  model009_lpp_fit_summary,
-  model009_ssvep_fit,
-  model009_ssvep_fit_summary,
-  model011_lpp_fit,
-  model011_lpp_fit_summary,
-  model011_ssvep_fit,
-  model011_ssvep_fit_summary,
-  file = paste0(parent_directory,"/paper_data_models/models/paper_models.RData"))
+pic_vid_stan_df <- 
+  merge(y = data_for_stan_df, 
+        x = demographic_information, 
+        by.y = "par", 
+        by.x = "stan_par_id",
+        all.y = T) %>% 
+  select(-par_id) %>% 
+  rename(par = stan_par_id,
+         type_pics_are_one = type)
 
-save(
-  model001_lpp_fit,
-  model001_lpp_fit_summary,
-  model001_ssvep_fit,
-  model001_ssvep_fit_summary,
-  model002_lpp_fit,
-  model002_lpp_fit_summary,
-  model002_ssvep_fit,
-  model002_ssvep_fit_summary,
-  model003_lpp_fit,
-  model003_lpp_fit_summary,
-  model003_ssvep_fit,
-  model003_ssvep_fit_summary,
-  model004_lpp_fit,
-  model004_lpp_fit_summary,
-  model004_ssvep_fit,
-  model004_ssvep_fit_summary,
-  model005_lpp_fit,
-  model005_lpp_fit_summary,
-  model005_ssvep_fit,
-  model005_ssvep_fit_summary,
-  model006_lpp_fit,
-  model006_lpp_fit_summary,
-  model006_ssvep_fit,
-  model006_ssvep_fit_summary,
-  model007_lpp_fit,
-  model007_lpp_fit_summary,
-  model007_ssvep_fit,
-  model007_ssvep_fit_summary,
-  model008_lpp_fit,
-  model008_lpp_fit_summary,
-  model008_ssvep_fit,
-  model008_ssvep_fit_summary,
-  model009_lpp_fit,
-  model009_lpp_fit_summary,
-  model009_ssvep_fit,
-  model009_ssvep_fit_summary,
-  model010_lpp_fit,
-  model010_lpp_fit_summary,
-  model010_ssvep_fit,
-  model010_ssvep_fit_summary,
-  model011_lpp_fit,
-  model011_lpp_fit_summary,
-  model011_ssvep_fit,
-  model011_ssvep_fit_summary,
-  file = paste0(parent_directory,"/paper_data_models/models/models.RData"))
+save(pic_vid_stan_df,
+     file = paste0(parent_directory,"/pic_vid_stan_df.RData"))
 
-model001_lpp_fit_loo <- model001_lpp_fit$loo()
-model002_lpp_fit_loo <- model002_lpp_fit$loo()
-model003_lpp_fit_loo <- model003_lpp_fit$loo()
-model004_lpp_fit_loo <- model004_lpp_fit$loo()
-model005_lpp_fit_loo <- model005_lpp_fit$loo()
-model006_lpp_fit_loo <- model006_lpp_fit$loo()
-model007_lpp_fit_loo <- model007_lpp_fit$loo()
-model008_lpp_fit_loo <- model008_lpp_fit$loo()
-model009_lpp_fit_loo <- model009_lpp_fit$loo()
-model010_lpp_fit_loo <- model010_lpp_fit$loo()
+# Save model fits and summaries
+save(model011_lpp_fit,
+     model011_lpp_fit_summary,
+     model011_ssvep_fit,
+     model011_ssvep_fit_summary,
+     model012_lpp_fit,
+     model012_lpp_fit_summary,
+     model012_ssvep_fit,
+     model012_ssvep_fit_summary,
+     file = paste0(parent_directory,"/paper_data_models/models/paper_models.RData"))
+
+save(model001_lpp_fit,
+     model001_lpp_fit_summary,
+     model001_ssvep_fit,
+     model001_ssvep_fit_summary,
+     model002_lpp_fit,
+     model002_lpp_fit_summary,
+     model002_ssvep_fit,
+     model002_ssvep_fit_summary,
+     model003_lpp_fit,
+     model003_lpp_fit_summary,
+     model003_ssvep_fit,
+     model003_ssvep_fit_summary,
+     model004_lpp_fit,
+     model004_lpp_fit_summary,
+     model004_ssvep_fit,
+     model004_ssvep_fit_summary,
+     model005_lpp_fit,
+     model005_lpp_fit_summary,
+     model005_ssvep_fit,
+     model005_ssvep_fit_summary,
+     model006_lpp_fit,
+     model006_lpp_fit_summary,
+     model006_ssvep_fit,
+     model006_ssvep_fit_summary,
+     model007_lpp_fit,
+     model007_lpp_fit_summary,
+     model007_ssvep_fit,
+     model007_ssvep_fit_summary,
+     model008_lpp_fit,
+     model008_lpp_fit_summary,
+     model008_ssvep_fit,
+     model008_ssvep_fit_summary,
+     model009_lpp_fit,
+     model009_lpp_fit_summary,
+     model009_ssvep_fit,
+     model009_ssvep_fit_summary,
+     model010_lpp_fit,
+     model010_lpp_fit_summary,
+     model010_ssvep_fit,
+     model010_ssvep_fit_summary,
+     model011_lpp_fit,
+     model011_lpp_fit_summary,
+     model011_ssvep_fit,
+     model011_ssvep_fit_summary,
+     model012_lpp_fit,
+     model012_lpp_fit_summary,
+     model012_ssvep_fit,
+     model012_ssvep_fit_summary,
+     model013_lpp_fit,
+     model013_lpp_fit_summary,
+     model013_ssvep_fit,
+     model013_ssvep_fit_summary,
+     file = paste0(parent_directory,"/paper_data_models/models/all_models.RData"))
+
+# Save model cross validation LOO
 model011_lpp_fit_loo <- model011_lpp_fit$loo()
 model012_lpp_fit_loo <- model012_lpp_fit$loo()
-model013_lpp_fit_loo <- model013_lpp_fit$loo()
-
-model001_ssvep_fit_loo <- model001_ssvep_fit$loo()
-model002_ssvep_fit_loo <- model002_ssvep_fit$loo()
-model003_ssvep_fit_loo <- model003_ssvep_fit$loo()
-model004_ssvep_fit_loo <- model004_ssvep_fit$loo()
-model005_ssvep_fit_loo <- model005_ssvep_fit$loo()
-model006_ssvep_fit_loo <- model006_ssvep_fit$loo()
-model007_ssvep_fit_loo <- model007_ssvep_fit$loo()
-model008_ssvep_fit_loo <- model008_ssvep_fit$loo()
-model009_ssvep_fit_loo <- model009_ssvep_fit$loo()
-model010_ssvep_fit_loo <- model010_ssvep_fit$loo()
 model011_ssvep_fit_loo <- model011_ssvep_fit$loo()
 model012_ssvep_fit_loo <- model012_ssvep_fit$loo()
-model013_ssvep_fit_loo <- model013_ssvep_fit$loo()
 
-loo::loo_compare(model003_lpp_fit_loo,
-                 model007_lpp_fit_loo,
-                 model011_lpp_fit_loo)
+save(model011_lpp_fit_loo,
+     model011_ssvep_fit_loo,
+     model012_lpp_fit_loo,
+     model012_ssvep_fit_loo,
+     file = paste0(parent_directory,"/paper_data_models/models/paper_model_loos.RData"))
 
-loo::loo_model_weights(list(model003_lpp_fit_loo,
-                            model007_lpp_fit_loo,
-                            model011_lpp_fit_loo))
-
-loo::loo_compare(model003_ssvep_fit_loo,
-                 model007_ssvep_fit_loo,
-                 model011_ssvep_fit_loo)
-
-loo::loo_model_weights(list(model003_ssvep_fit_loo,
-                            model007_ssvep_fit_loo,
-                            model011_ssvep_fit_loo))
-
-
-# Old below this####
-
-# need to find proper priors for each ERP
-data_list_for_stan <- list()
-
-## uninformative priors for par higher-level distribution
-data_list_for_stan$picture_par_bar_mean_prior <-
-  data_for_stan_df %>%
-  filter(type == 1) %>% 
-  summarise("mean_amp" = mean(amp)) %>% 
-  pull(mean_amp)
-
-data_list_for_stan$picture_par_bar_sd_prior <-
-  data_for_stan_df %>% 
-  filter(type == 1) %>% 
-  group_by(cate, type) %>%
-  mutate(mean_amp = mean(amp),
-         cate_adjusted_amp = amp - mean_amp) %>% 
-  ungroup() %>% 
-  summarise(cate_adjusted_amp_sd_prior = sd(cate_adjusted_amp) * 2) %>% 
-  pull(cate_adjusted_amp_sd_prior)
-
-data_list_for_stan$video_par_bar_mean_prior <-
-  data_for_stan_df %>%
-  filter(type == 2) %>% 
-  summarise("mean_amp" = mean(amp)) %>% 
-  pull(mean_amp)
-
-data_list_for_stan$video_par_bar_sd_prior <-
-  data_for_stan_df %>%
-  filter(type == 2) %>% 
-  group_by(cate, type) %>%
-  mutate(mean_amp = mean(amp),
-         cate_adjusted_amp = amp - mean_amp) %>% 
-  ungroup() %>% 
-  summarise(cate_adjusted_amp_sd_prior = sd(cate_adjusted_amp) * 2) %>% 
-  pull(cate_adjusted_amp_sd_prior)
-
-## uninformative priors for cate higher-level distribution
-
-data_list_for_stan$picture_cate_bar_sd_prior <-
-  data_for_stan_df %>% 
-  filter(type == 1) %>% 
-  group_by(par, type) %>%
-  mutate(mean_amp = mean(amp),
-         par_adjusted_amp = amp - mean_amp) %>% 
-  ungroup() %>% 
-  summarise(par_adjusted_amp_sd_prior = sd(par_adjusted_amp) * 2) %>% 
-  pull(par_adjusted_amp_sd_prior)
-
-data_list_for_stan$video_cate_bar_sd_prior <-
-  data_for_stan_df %>%
-  filter(type == 2) %>% 
-  group_by(par, type) %>%
-  mutate(mean_amp = mean(amp),
-         par_adjusted_amp = amp - mean_amp) %>% 
-  ungroup() %>% 
-  summarise(par_adjusted_amp_sd_prior = sd(par_adjusted_amp) * 2) %>% 
-  pull(par_adjusted_amp_sd_prior)
-
-## uninformative priors for parXcate higher-level distribution
-data_list_for_stan$picture_parxcate_sd_prior <-
-  data_for_stan_df %>% 
-  filter(type == 1) %>% 
-  group_by(par, cate, type) %>%
-  mutate(mean_amp = mean(amp),
-         par_adjusted_amp = amp - mean_amp) %>% 
-  ungroup() %>% 
-  summarise(par_adjusted_amp_sd_prior = sd(par_adjusted_amp) * 2) %>% 
-  pull(par_adjusted_amp_sd_prior)
-
-data_list_for_stan$video_parxcate_sd_prior <-
-  data_for_stan_df %>%
-  filter(type == 2) %>% 
-  group_by(par, cate, type) %>%
-  mutate(mean_amp = mean(amp),
-         par_adjusted_amp = amp - mean_amp) %>% 
-  ungroup() %>% 
-  summarise(par_adjusted_amp_sd_prior = sd(par_adjusted_amp) * 2) %>% 
-  pull(par_adjusted_amp_sd_prior)
-
-
-data_list_for_stan$nobs <- nrow(data_for_stan_df)
-data_list_for_stan$nlpp <- nrow(data_for_stan_df[data_for_stan_df$type == 1,])
-data_list_for_stan$nssvep <- nrow(data_for_stan_df[data_for_stan_df$type == 2,])
-data_list_for_stan$npar <- data_for_stan_df$par %>% unique() %>% length()
-data_list_for_stan$ncate <- as.integer(3)
-data_list_for_stan$ntype <- as.integer(2)
-
-data_list_for_stan$par = data_for_stan_df$par %>% as.factor() %>% as.integer()
-data_list_for_stan$type = data_for_stan_df$type
-data_list_for_stan$cate = data_for_stan_df$cate
-data_list_for_stan$amp = data_for_stan_df$amp
-data_list_for_stan$arousal = data_for_stan_df$arousal
-
-data_for_stan_df %>% 
-  mutate(cate = factor(cate)) %>% 
-  ggplot(aes(y = amp, 
-             x = arousal)) +
-  geom_quasirandom(aes(color = cate)) +
-  geom_line(stat = "smooth", method = "lm", aes(group = 1), 
-            alpha = .5, se = F, color = "black", linewidth = 2) +
-  geom_ribbon(stat = "smooth", method = "lm",
-              aes(ymin = ..y.. - (1.96 * ..se..), # make 95% CI
-                  ymax = ..y.. + (1.96 * ..se..)), 
-              alpha = .2, color = "black", linetype = "blank") +
-  scale_color_manual(values = c("blue", "green", "red")) +
-  # scale_color_colorblind()+
-  scale_x_continuous(breaks = seq(1, 9, by = 1),
-                     limits = c(0.5, 9.5))+
-  facet_wrap(.~ type,scales = "free_y") +
-  theme_classic()
-
-
-data_for_stan_df %>% 
-  group_by(cate, type, vids_first_is_one) %>%
-  mutate(cate = factor(cate)) %>% 
-  summarise(mean_amp = mean(amp),
-            se_amp = std.error(amp)) %>% 
-  ggplot() +
-  geom_pointrange(aes(x = cate, y = mean_amp,
-                      ymax = mean_amp + se_amp,
-                      ymin = mean_amp - se_amp)) +
-  facet_wrap(. ~ type + vids_first_is_one,scales = "free_y")
-
-
-data_for_stan_df %>% 
-  group_by(par, cate, type, vids_first_is_one) %>%
-  mutate(cate = factor(cate)) %>% 
-  summarise(mean_amp = mean(amp),
-            se_amp = std.error(amp)) %>% 
-  ggplot() +
-  geom_line(aes(x = cate, y = mean_amp, group = par)) +
-  geom_beeswarm(aes(x = cate, y = mean_amp,
-                    color = cate)) +
-  facet_wrap(. ~ type + vids_first_is_one, scales = "free_y")
-
-data_for_stan_df %>% 
-  group_by(par, type) %>%
-  mutate(mean_amp = mean(amp),
-         adjusted_amp = amp - mean_amp) %>% 
-  group_by(par, cate, type, vids_first_is_one) %>%
-  mutate(cate = factor(cate)) %>% 
-  summarise(mean_amp = mean(adjusted_amp),
-            se_amp = std.error(adjusted_amp)) %>% 
-  ggplot() +
-  geom_line(aes(x = cate, y = mean_amp, group = par)) +
-  geom_beeswarm(aes(x = cate, y = mean_amp,
-                    color = cate)) +
-  facet_wrap(. ~ type + vids_first_is_one, scales = "free_y")
-
-
-data_for_stan_df %>% 
-  group_by(par, type) %>%
-  mutate(mean_amp = mean(amp),
-         adjusted_amp = amp - mean_amp) %>% 
-  group_by(type) %>% 
-  summarise(sd(adjusted_amp))
-
-data_for_stan_df %>% 
-  group_by(cate, type) %>%
-  mutate(mean_amp = mean(amp),
-         adjusted_amp = amp - mean_amp) %>% 
-  group_by(type) %>% 
-  summarise(sd(adjusted_amp))
-
-data_for_stan_df %>% 
-  group_by(par, cate, type) %>%
-  mutate(mean_amp = mean(amp),
-         adjusted_amp = amp - mean_amp) %>% 
-  group_by(type) %>% 
-  summarise(sd(adjusted_amp))
-
-data_for_stan_df %>% 
-  filter(type == 1) %>% 
-  mutate(emotional = case_when(cate == 1 ~ "emotional",
-                               cate == 2 ~ "neutral",
-                               cate == 3 ~ "emotional")) %>% 
-  group_by(par,emotional) %>%
-  summarise(mean_amp = mean(amp)) %>% 
-  group_by(par) %>% 
-  summarise(diff_amp = sum(mean_amp[emotional == "emotional"]) - sum(mean_amp[emotional == "neutral"])) %>%
-  filter(diff_amp > 0) %>%
-  summarise(count = n()/46) %>% 
-  print(n =50)
-
-
-
-data_for_stan_df %>% 
-  filter(type == 2) %>% 
-  mutate(emotional = case_when(cate == 1 ~ "emotional",
-                               cate == 2 ~ "neutral",
-                               cate == 3 ~ "emotional")) %>% 
-  group_by(par,emotional) %>%
-  summarise(mean_amp = mean(amp)) %>% 
-  group_by(par) %>% 
-  summarise(diff_amp = sum(mean_amp[emotional == "emotional"]) - sum(mean_amp[emotional == "neutral"])) %>%
-  filter(diff_amp < 0) %>%
-  summarise(count = n()/46) %>% 
-  print(n =50)
-
-# Category models, probably would keep model1,2,7 with 7 being the final####
-# Fit model 1: random effect participant ####
-
-model001_path <- paste0(pic_vid_repository,
-                        "/stan_models/pic_vid001_par.stan")
-
-model001 <- cmdstan_model(model001_path, force_recompile = T)
-
-model001_fit <- model001$sample(
-  data = data_list_for_stan,
-  refresh = 200,
-  seed = 2, 
-  iter_warmup = 5000,
-  iter_sampling = 8000,
-  save_warmup = F,
-  show_messages = T,
-  chains = 4, 
-  parallel_chains = 4)
-
-model001_meta_data <- model001_fit$metadata()
-
-relevant_model001_parameters <- model001_meta_data$model_params[
-  !str_detect(model001_meta_data$model_params, "log_lik")]
-
-model001_summary <- model001_fit$summary(
-  variables = relevant_model001_parameters)
-
-model001_loo <- model001_fit$loo(save_psis = TRUE)
-
-# I should look at prior compared to posterior distributions here
-
-
-# model001_plot_df <- 
-lpp_posterior_summary_df001 <- model001_summary %>% 
-  filter(str_detect(variable,"^bpar_lpp")) %>% 
-  mutate(variable = factor(variable, levels = variable))
-
-ssvep_posterior_summary_df001 <- model001_summary %>% 
-  filter(str_detect(variable,"^bpar_ssvep")) %>% 
-  mutate(variable = factor(variable, levels = variable))
-
-lpp_posterior_summary_df001 %>% 
-  ggplot() +
-  geom_pointrange(aes(x = variable, y = mean,
-                      ymin = q5, ymax = q95), 
-                  color = "red") +
-  # geom_point(aes(x = variable, y = mean_epn)) +
-  scale_x_discrete(guide = guide_axis(n.dodge=3), name = "Participant") +
-  scale_y_continuous(name = "Microvoltage") +
-  ggtitle("LPP participant mean") +
-  theme_classic() +
-  theme(text = element_text(size = 15),
-        axis.text.x = element_text(size = 5)) +
-  
-  ssvep_posterior_summary_df001 %>% 
-  ggplot() +
-  geom_pointrange(aes(x = variable, y = mean,
-                      ymin = q5, ymax = q95), 
-                  color = "red") +
-  # geom_point(aes(x = variable, y = mean_epn)) +
-  scale_x_discrete(guide = guide_axis(n.dodge=3), name = "Participant") +
-  scale_y_continuous(name = "Microvoltage") +
-  ggtitle("ssVEP participant mean") +
-  theme_classic() +
-  theme(text = element_text(size = 15),
-        axis.text.x = element_text(size = 5))
-
-# Fit model 2: random effect participant, category effect####
-
-model002_path <-model001_path <- paste0(pic_vid_repository,
-                                        "/stan_models/pic_vid002_par_cate.stan")
-
-model002 <- cmdstan_model(model002_path, force_recompile = T)
-
-model002_fit <- model002$sample(
-  data = data_list_for_stan,
-  refresh = 200,
-  seed = 2, 
-  iter_warmup = 10000,
-  iter_sampling = 8000,
-  save_warmup = F,
-  show_messages = T,
-  chains = 4, 
-  parallel_chains = 4)
-
-model002_meta_data <- model002_fit$metadata()
-
-relevant_model002_parameters <- model002_meta_data$model_params[
-  !str_detect(model002_meta_data$model_params, "log_lik")]
-
-model002_summary <- model002_fit$summary(
-  variables = relevant_model002_parameters)
-
-
-# model001_loo <- model001_fit$loo(save_psis = TRUE)
-model002_loo <- model002_fit$loo(save_psis = TRUE)
-
-model001_loo
-model002_loo
-
-loo::loo_compare(model001_loo, model002_loo)
-loo::loo_model_weights(list(model001_loo, model002_loo))
-
-model002_draws <- model002_fit$draws(inc_warmup = F)
-bayesplot::mcmc_trace(model002_draws[,,c(1:5)])
-
-lpp_posterior_summary_df <- model002_summary %>% 
-  filter(str_detect(variable,"^bpar_lpp")) %>% 
-  mutate(variable = factor(variable, levels = variable))
-
-ssvep_posterior_summary_df <- model002_summary %>% 
-  filter(str_detect(variable,"^bpar_ssvep")) %>% 
-  mutate(variable = factor(variable, levels = variable))
-
-lpp_posterior_summary_df %>% 
-  ggplot() +
-  geom_pointrange(aes(x = variable, y = mean,
-                      ymin = q5, ymax = q95), 
-                  color = "red") +
-  # geom_point(aes(x = variable, y = mean_epn)) +
-  scale_x_discrete(guide = guide_axis(n.dodge=3), name = "Parameter") +
-  # scale_y_continuous(breaks = seq(-2,16, by = 2), name = "Microvoltage") +
-  theme_classic() +
-  theme(text = element_text(size = 15),
-        axis.text.x = element_text(size = 5)) +
-  
-  ssvep_posterior_summary_df %>% 
-  ggplot() +
-  geom_pointrange(aes(x = variable, y = mean,
-                      ymin = q5, ymax = q95), 
-                  color = "red") +
-  # geom_point(aes(x = variable, y = mean_epn)) +
-  scale_x_discrete(guide = guide_axis(n.dodge=3), name = "Parameter") +
-  # scale_y_continuous(breaks = seq(-2,16, by = 2), name = "Microvoltage") +
-  theme_classic() +
-  theme(text = element_text(size = 15),
-        axis.text.x = element_text(size = 5))
-
-
-model002_draws_df <- model002_fit$draws(format = "df")
-
-
-(model002_draws_df %>% 
-    select(starts_with("bcate_lpp")) %>% 
-    pivot_longer(cols = everything()) %>% 
-    ggplot() +
-    geom_density(aes(x = value, fill = name), alpha = .5) +
-    scale_x_continuous(limits = c(-10,10)) +
-    theme_bw()) /
-  
-  (model002_draws_df %>% 
-     select(starts_with("bcate_ssvep")) %>% 
-     pivot_longer(cols = everything()) %>% 
-     ggplot() +
-     geom_density(aes(x = -value, fill = name), alpha = .5) +
-     scale_x_continuous(limits = c(-.275,.275)) +
-     theme_bw())
-
-model002_draws_df %>% 
-  mutate(lpp_emotional_difference = ((`bcate_lpp[1]` + `bcate_lpp[3]`)/2) - `bcate_lpp[2]`) %>% 
-  select(lpp_emotional_difference,
-         starts_with("bcate_lpp")) %>% 
-  pivot_longer(everything()) %>%
-  ggplot() +
-  geom_density(aes(x = value, fill = name), alpha = .5) +
-  scale_x_continuous(limits = c(-10,10)) +
-  theme_bw()
-
-model002_draws_df %>% 
-  mutate(ssvep_emotional_difference = ((`bcate_ssvep[1]` + `bcate_ssvep[3]`)/2) - `bcate_ssvep[2]`) %>% 
-  select(ssvep_emotional_difference,
-         starts_with("bcate_ssvep")) %>% 
-  pivot_longer(everything()) %>%
-  ggplot() +
-  geom_density(aes(x = value, fill = name), alpha = .5) +
-  scale_x_continuous(limits = c(-.275,.275)) +
-  theme_bw()
-
-# make posterior predictive
-lpp_pos_pred_df <- model002_draws_df %>% 
-  mutate(lpp_emotional_difference = ((`bcate_lpp[1]` + `bcate_lpp[3]`)/2) - `bcate_lpp[2]`) %>% 
-  select(lpp_emotional_difference, lpp_sd)
-
-(sum(rnorm(12000, 
-           mean = lpp_pos_pred_df$lpp_emotional_difference, 
-           sd = lpp_pos_pred_df$lpp_sd) > 0) / 12000) *100
-
-rnorm(12000, mean = lpp_pos_pred_df$lpp_emotional_difference, sd = lpp_pos_pred_df$lpp_sd) %>% 
-  density() %>% 
-  plot()
-
-ssvep_pos_pred_df <- model002_draws_df %>% 
-  mutate(ssvep_emotional_difference = ((`bcate_ssvep[1]` + `bcate_ssvep[3]`)/2) - `bcate_ssvep[2]`)  %>% 
-  select(ssvep_emotional_difference, ssvep_sd)
-
-(sum(rnorm(12000, 
-           mean = ssvep_pos_pred_df$ssvep_emotional_difference, 
-           sd = ssvep_pos_pred_df$ssvep_sd) < 0) / 12000) *100
-
-# Fit model 3: random effect participant, category effect, participant x category interaction ####
-
-model003_path <-"/home/andrewf/Repositories/Pic_Vid/pic_vid003_par_cate_int.stan"
-
-model003 <- cmdstan_model(model003_path)
-
-model003_fit <- model003$sample(
-  data = data_list_for_stan,
-  refresh = 100,
-  seed = 2, 
-  iter_warmup = 2000,
-  iter_sampling = 2000,
-  save_warmup = F,
-  show_messages = T,
-  chains = 6, 
-  parallel_chains = 6)
-
-model003_summary <- model003_fit$summary()
-
-
-model003_draws <- model003_fit$draws(inc_warmup = F)
-bayesplot::mcmc_trace(model003_draws[,,c(1:5)])
-
-lpp_posterior_summary_df <- model003_summary %>% 
-  filter(str_detect(variable,"^bpar_lpp")) %>% 
-  mutate(variable = factor(variable, levels = variable))
-
-ssvep_posterior_summary_df <- model003_summary %>% 
-  filter(str_detect(variable,"^bpar_ssvep")) %>% 
-  mutate(variable = factor(variable, levels = variable))
-
-lpp_posterior_summary_df %>% 
-  ggplot() +
-  geom_pointrange(aes(x = variable, y = mean,
-                      ymin = q5, ymax = q95), 
-                  color = "red") +
-  # geom_point(aes(x = variable, y = mean_epn)) +
-  scale_x_discrete(guide = guide_axis(n.dodge=3), name = "Parameter") +
-  # scale_y_continuous(breaks = seq(-2,16, by = 2), name = "Microvoltage") +
-  theme_classic() +
-  theme(text = element_text(size = 15),
-        axis.text.x = element_text(size = 5)) +
-  
-  ssvep_posterior_summary_df %>% 
-  ggplot() +
-  geom_pointrange(aes(x = variable, y = mean,
-                      ymin = q5, ymax = q95), 
-                  color = "red") +
-  # geom_point(aes(x = variable, y = mean_epn)) +
-  scale_x_discrete(guide = guide_axis(n.dodge=3), name = "Parameter") +
-  # scale_y_continuous(breaks = seq(-2,16, by = 2), name = "Microvoltage") +
-  theme_classic() +
-  theme(text = element_text(size = 15),
-        axis.text.x = element_text(size = 5))
-
-model003_draws_df <- model003_fit$draws(format = "df")
-
-(model002_draws_df %>% 
-    mutate(lpp_emotional_difference = ((`bcate_lpp[1]` + `bcate_lpp[3]`)/2) - `bcate_lpp[2]`) %>% 
-    select(lpp_emotional_difference,
-           starts_with("bcate_lpp")) %>% 
-    pivot_longer(everything()) %>%
-    ggplot() +
-    geom_density(aes(x = value, fill = name), alpha = .5) +
-    scale_x_continuous(limits = c(-10,10)) +
-    theme_bw()) /
-  (model003_draws_df %>% 
-     mutate(lpp_emotional_difference = ((`bcate_lpp[1]` + `bcate_lpp[3]`)/2) - `bcate_lpp[2]`) %>% 
-     select(lpp_emotional_difference,
-            starts_with("bcate_lpp")) %>% 
-     pivot_longer(everything()) %>%
-     ggplot() +
-     geom_density(aes(x = value, fill = name), alpha = .5) +
-     scale_x_continuous(limits = c(-10,10)) +
-     theme_bw())
-
-(model002_draws_df %>% 
-    mutate(ssvep_emotional_difference = ((`bcate_ssvep[1]` + `bcate_ssvep[3]`)/2) - `bcate_ssvep[2]`) %>% 
-    select(ssvep_emotional_difference,
-           starts_with("bcate_ssvep")) %>% 
-    pivot_longer(everything()) %>%
-    ggplot() +
-    geom_density(aes(x = value, fill = name), alpha = .5) +
-    scale_x_continuous(limits = c(-.275,.275)) +
-    theme_bw()) /
-  (model003_draws_df %>% 
-     mutate(ssvep_emotional_difference = ((`bcate_ssvep[1]` + `bcate_ssvep[3]`)/2) - `bcate_ssvep[2]`) %>% 
-     select(ssvep_emotional_difference,
-            starts_with("bcate_ssvep")) %>% 
-     pivot_longer(everything()) %>%
-     ggplot() +
-     geom_density(aes(x = value, fill = name), alpha = .5) +
-     scale_x_continuous(limits = c(-.275,.275)) +
-     theme_bw())
-
-# make posterior predictive
-lpp_pos_pred_df <- model003_draws_df %>% 
-  mutate(lpp_emotional_difference = ((`bcate_lpp[1]` + `bcate_lpp[3]`)/2) - `bcate_lpp[2]`) %>% 
-  select(lpp_emotional_difference, lpp_sd)
-
-(sum(rnorm(12000, 
-           mean = lpp_pos_pred_df$lpp_emotional_difference, 
-           sd = lpp_pos_pred_df$lpp_sd) > 0) / 12000) *100
-
-rnorm(12000, mean = lpp_pos_pred_df$lpp_emotional_difference, sd = lpp_pos_pred_df$lpp_sd) %>% 
-  density() %>% 
-  plot()
-
-ssvep_pos_pred_df <- model003_draws_df %>% 
-  mutate(ssvep_emotional_difference = ((`bcate_ssvep[1]` + `bcate_ssvep[3]`)/2) - `bcate_ssvep[2]`)  %>% 
-  select(ssvep_emotional_difference, ssvep_sd)
-
-(sum(rnorm(12000, 
-           mean = ssvep_pos_pred_df$ssvep_emotional_difference, 
-           sd = ssvep_pos_pred_df$ssvep_sd) < 0) / 12000) *100
-
-# Fit model 4: random effect participant, category effect skew normal ####
-
-model004_path <-"/home/andrewf/Repositories/Pic_Vid/pic_vid004_par_cate_skew.stan"
-
-model004 <- cmdstan_model(model004_path)
-
-model004_fit <- model004$sample(
-  data = data_list_for_stan,
-  refresh = 100,
-  seed = 2, 
-  iter_warmup = 10000,
-  iter_sampling = 5000,
-  save_warmup = F,
-  show_messages = T,
-  chains = 6, 
-  parallel_chains = 6)
-
-model004_summary <- model004_fit$summary()
-
-
-model004_draws <- model004_fit$draws(inc_warmup = F)
-bayesplot::mcmc_trace(model004_draws[,,c(1:5)])
-
-lpp_posterior_summary_df004 <- model004_summary %>% 
-  filter(str_detect(variable,"^bpar_lpp")) %>% 
-  mutate(variable = factor(variable, levels = variable))
-
-ssvep_posterior_summary_df004 <- model004_summary %>% 
-  filter(str_detect(variable,"^bpar_ssvep")) %>% 
-  mutate(variable = factor(variable, levels = variable))
-
-lpp_posterior_summary_df004 %>% 
-  ggplot() +
-  geom_pointrange(aes(x = variable, y = mean,
-                      ymin = q5, ymax = q95), 
-                  color = "red") +
-  # geom_point(aes(x = variable, y = mean_epn)) +
-  scale_x_discrete(guide = guide_axis(n.dodge=3), name = "Parameter") +
-  # scale_y_continuous(breaks = seq(-2,16, by = 2), name = "Microvoltage") +
-  theme_classic() +
-  theme(text = element_text(size = 15),
-        axis.text.x = element_text(size = 5)) +
-  
-  ssvep_posterior_summary_df004 %>% 
-  ggplot() +
-  geom_pointrange(aes(x = variable, y = mean,
-                      ymin = q5, ymax = q95), 
-                  color = "red") +
-  # geom_point(aes(x = variable, y = mean_epn)) +
-  scale_x_discrete(guide = guide_axis(n.dodge=3), name = "Parameter") +
-  # scale_y_continuous(breaks = seq(-2,16, by = 2), name = "Microvoltage") +
-  theme_classic() +
-  theme(text = element_text(size = 15),
-        axis.text.x = element_text(size = 5))
-
-# Fit model 5: random effect participant, category effect t-distribution ####
-
-model005_path <-"/home/andrewf/Repositories/Pic_Vid/pic_vid005_par_cate_tdis.stan"
-
-model005 <- cmdstan_model(model005_path)
-
-model005_fit <- model005$sample(
-  data = data_list_for_stan,
-  refresh = 100,
-  seed = 2, 
-  iter_warmup = 10000,
-  iter_sampling = 5000,
-  save_warmup = F,
-  show_messages = T,
-  chains = 6, 
-  parallel_chains = 6)
-
-model005_summary <- model005_fit$summary()
-
-
-model005_draws <- model005_fit$draws(inc_warmup = F)
-bayesplot::mcmc_trace(model005_draws[,,c(1:5)])
-
-lpp_posterior_summary_df005 <- model005_summary %>% 
-  filter(str_detect(variable,"^bpar_lpp")) %>% 
-  mutate(variable = factor(variable, levels = variable))
-
-ssvep_posterior_summary_df005 <- model005_summary %>% 
-  filter(str_detect(variable,"^bpar_ssvep")) %>% 
-  mutate(variable = factor(variable, levels = variable))
-
-lpp_posterior_summary_df005 %>% 
-  ggplot() +
-  geom_pointrange(aes(x = variable, y = mean,
-                      ymin = q5, ymax = q95), 
-                  color = "red") +
-  # geom_point(aes(x = variable, y = mean_epn)) +
-  scale_x_discrete(guide = guide_axis(n.dodge=3), name = "Parameter") +
-  # scale_y_continuous(breaks = seq(-2,16, by = 2), name = "Microvoltage") +
-  theme_classic() +
-  theme(text = element_text(size = 15),
-        axis.text.x = element_text(size = 5)) +
-  
-  ssvep_posterior_summary_df005 %>% 
-  ggplot() +
-  geom_pointrange(aes(x = variable, y = mean,
-                      ymin = q5, ymax = q95), 
-                  color = "red") +
-  # geom_point(aes(x = variable, y = mean_epn)) +
-  scale_x_discrete(guide = guide_axis(n.dodge=3), name = "Parameter") +
-  # scale_y_continuous(breaks = seq(-2,16, by = 2), name = "Microvoltage") +
-  theme_classic() +
-  theme(text = element_text(size = 15),
-        axis.text.x = element_text(size = 5))
-
-model005_draws_df <- model005_fit$draws(format = "df")
-
-
-(model005_draws_df %>% 
-    select(starts_with("bcate_lpp")) %>% 
-    pivot_longer(cols = everything()) %>% 
-    ggplot() +
-    geom_density(aes(x = value, fill = name), alpha = .5) +
-    scale_x_continuous(limits = c(-10,10)) +
-    theme_bw()) /
-  
-  (model005_draws_df %>% 
-     select(starts_with("bcate_ssvep")) %>% 
-     pivot_longer(cols = everything()) %>% 
-     ggplot() +
-     geom_density(aes(x = -value, fill = name), alpha = .5) +
-     scale_x_continuous(limits = c(-.275,.275)) +
-     theme_bw())
-
-model005_draws_df %>% 
-  mutate(lpp_emotional_difference = ((`bcate_lpp[1]` + `bcate_lpp[3]`)/2) - `bcate_lpp[2]`) %>% 
-  select(lpp_emotional_difference,
-         starts_with("bcate_lpp")) %>% 
-  pivot_longer(everything()) %>%
-  ggplot() +
-  geom_density(aes(x = value, fill = name), alpha = .5) +
-  scale_x_continuous(limits = c(-10,10)) +
-  theme_bw()
-
-model005_draws_df %>% 
-  mutate(ssvep_emotional_difference = ((`bcate_ssvep[1]` + `bcate_ssvep[3]`)/2) - `bcate_ssvep[2]`) %>% 
-  select(ssvep_emotional_difference,
-         starts_with("bcate_ssvep")) %>% 
-  pivot_longer(everything()) %>%
-  ggplot() +
-  geom_density(aes(x = value, fill = name), alpha = .5) +
-  scale_x_continuous(limits = c(-.275,.275)) +
-  theme_bw()
-
-# Fit model 6: random effect participant, category effect t-distribution ####
-
-model006_path <-"/home/andrewf/Repositories/Pic_Vid/pic_vid006_par_cate_tdis.stan"
-
-model006 <- cmdstan_model(model006_path)
-
-model006_fit <- model006$sample(
-  data = data_list_for_stan,
-  refresh = 100,
-  seed = 2, 
-  iter_warmup = 2000,
-  iter_sampling = 2000,
-  save_warmup = F,
-  show_messages = T,
-  chains = 6, 
-  parallel_chains = 6)
-
-model006_summary <- model006_fit$summary()
-
-
-model006_draws <- model006_fit$draws(inc_warmup = F)
-bayesplot::mcmc_trace(model006_draws[,,c(1:5)])
-
-lpp_posterior_summary_df006 <- model006_summary %>% 
-  filter(str_detect(variable,"^bpar_lpp")) %>% 
-  mutate(variable = factor(variable, levels = variable))
-
-ssvep_posterior_summary_df006 <- model006_summary %>% 
-  filter(str_detect(variable,"^bpar_ssvep")) %>% 
-  mutate(variable = factor(variable, levels = variable))
-
-lpp_posterior_summary_df006 %>% 
-  ggplot() +
-  geom_pointrange(aes(x = variable, y = mean,
-                      ymin = q5, ymax = q95), 
-                  color = "red") +
-  # geom_point(aes(x = variable, y = mean_epn)) +
-  scale_x_discrete(guide = guide_axis(n.dodge=3), name = "Parameter") +
-  # scale_y_continuous(breaks = seq(-2,16, by = 2), name = "Microvoltage") +
-  theme_classic() +
-  theme(text = element_text(size = 15),
-        axis.text.x = element_text(size = 5)) +
-  
-  ssvep_posterior_summary_df006 %>% 
-  ggplot() +
-  geom_pointrange(aes(x = variable, y = mean,
-                      ymin = q5, ymax = q95), 
-                  color = "red") +
-  # geom_point(aes(x = variable, y = mean_epn)) +
-  scale_x_discrete(guide = guide_axis(n.dodge=3), name = "Parameter") +
-  # scale_y_continuous(breaks = seq(-2,16, by = 2), name = "Microvoltage") +
-  theme_classic() +
-  theme(text = element_text(size = 15),
-        axis.text.x = element_text(size = 5))
-
-model006_draws_df <- model006_fit$draws(format = "df")
-
-
-(model006_draws_df %>% 
-    select(starts_with("bcate_lpp")) %>% 
-    pivot_longer(cols = everything()) %>% 
-    ggplot() +
-    geom_density(aes(x = value, fill = name), alpha = .5) +
-    scale_x_continuous(limits = c(-10,10)) +
-    theme_bw()) /
-  
-  (model006_draws_df %>% 
-     select(starts_with("bcate_ssvep")) %>% 
-     pivot_longer(cols = everything()) %>% 
-     ggplot() +
-     geom_density(aes(x = -value, fill = name), alpha = .5) +
-     scale_x_continuous(limits = c(-.275,.275)) +
-     theme_bw())
-
-model006_draws_df %>% 
-  mutate(lpp_emotional_difference = ((`bcate_lpp[1]` + `bcate_lpp[3]`)/2) - `bcate_lpp[2]`) %>% 
-  select(lpp_emotional_difference,
-         starts_with("bcate_lpp")) %>% 
-  pivot_longer(everything()) %>%
-  ggplot() +
-  geom_density(aes(x = value, fill = name), alpha = .5) +
-  scale_x_continuous(limits = c(-10,10)) +
-  theme_bw()
-
-model006_draws_df %>% 
-  mutate(ssvep_emotional_difference = ((`bcate_ssvep[1]` + `bcate_ssvep[3]`)/2) - `bcate_ssvep[2]`) %>% 
-  select(ssvep_emotional_difference,
-         starts_with("bcate_ssvep")) %>% 
-  pivot_longer(everything()) %>%
-  ggplot() +
-  geom_density(aes(x = value, fill = name), alpha = .5) +
-  scale_x_continuous(limits = c(-.275,.275)) +
-  theme_bw()
-
-
-# Fit model 7: random effect participant, category effect t-distribution ####
-
-
-model007_path <-model001_path <- paste0(pic_vid_repository,
-                                        "/stan_models/pic_vid007_par_cate_tdis.stan")
-
-model007 <- cmdstan_model(model007_path,force_recompile = T)
-
-model007_fit <- model007$sample(
-  data = data_list_for_stan,
-  refresh = 200,
-  seed = 2, 
-  iter_warmup = 10000,
-  iter_sampling = 8000,
-  save_warmup = F,
-  show_messages = T,
-  chains = 4, 
-  parallel_chains = 4)
-
-model007_meta_data <- model007_fit$metadata()
-
-relevant_model007_parameters <- model007_meta_data$model_params[
-  !str_detect(model007_meta_data$model_params, "log_lik")]
-
-model007_summary <- model007_fit$summary(
-  variables = relevant_model007_parameters)
-
-# model001_loo <- model001_fit$loo(save_psis = TRUE)
-# model002_loo <- model002_fit$loo(save_psis = TRUE)
-model007_loo <- model007_fit$loo(save_psis = TRUE)
-
-model001_loo
-model002_loo
-model007_loo
-
-loo::loo_compare(model001_loo, model002_loo, model007_loo)
-loo::loo_model_weights(list(model001_loo, model002_loo, model007_loo))
-loo::loo_model_weights(list(model001_loo, model002_loo))
-loo::loo_model_weights(list(model007_loo, model002_loo))
-
-
-# make posterior predictive
-model007_draws_df <- model007_fit$draws(format = "df")
-
-# n number of trials
-lpp_predict_emotion_trial_contrast <- function(model_draws_df){
-  
-  pleasant_trial = 
-    rnorm(nrow(model_draws_df),
-          mean = model_draws_df$`bcate_lpp[1]`,
-          sd = model007_draws_df$lpp_sd)
-  
-  neutral_trial =
-    rnorm(nrow(model_draws_df),
-          mean = model_draws_df$`bcate_lpp[2]`,
-          sd = model007_draws_df$lpp_sd)
-  
-  unpleasant_trial =
-    rnorm(nrow(model_draws_df),
-          mean = model_draws_df$`bcate_lpp[3]`,
-          sd = model007_draws_df$lpp_sd)
-  
-  emotional_difference_prediction <- ((pleasant_trial + unpleasant_trial)/2) -
-    neutral_trial
-  
-  emotional_difference_prediction
-}
-
-ssvep_predict_emotion_trial_contrast <- function(model_draws_df){
-  
-  pleasant_trial = 
-    rnorm(nrow(model_draws_df),
-          mean = model_draws_df$`bcate_ssvep[1]`,
-          sd = model007_draws_df$ssvep_sd)
-  
-  neutral_trial =
-    rnorm(nrow(model_draws_df),
-          mean = model_draws_df$`bcate_ssvep[2]`,
-          sd = model007_draws_df$ssvep_sd)
-  
-  unpleasant_trial =
-    rnorm(nrow(model_draws_df),
-          mean = model_draws_df$`bcate_ssvep[3]`,
-          sd = model007_draws_df$ssvep_sd)
-  
-  emotional_difference_prediction <- ((pleasant_trial + unpleasant_trial)/2) -
-    neutral_trial
-  
-  emotional_difference_prediction
-}
-
-mean_list_vectors <- function(list_of_vectors){
-  list_of_vectors %>% list2DF() %>% rowMeans()
-}
-
-for (trials in c(1,5,15,30,50)) {
-  
-  lpp_list_of_vectors <- purrr::map(rep(list(model007_draws_df), times = trials),
-                                    lpp_predict_emotion_trial_contrast) 
-  ssvep_list_of_vectors <- purrr::map(rep(list(model007_draws_df), times = trials),
-                                      ssvep_predict_emotion_trial_contrast) 
-  
-  if (trials == 1) {
-    lpp_trials_plot_df <- data.frame(trials = trials,
-                                     samples = mean_list_vectors(lpp_list_of_vectors))
-    ssvep_trials_plot_df <- data.frame(trials = trials,
-                                       samples = mean_list_vectors(ssvep_list_of_vectors))
-  } else {
-    lpp_trials_plot_df <- rbind.data.frame(lpp_trials_plot_df,
-                                           data.frame(
-                                             trials = trials,
-                                             samples = mean_list_vectors(
-                                               lpp_list_of_vectors)))
-    ssvep_trials_plot_df <- rbind.data.frame(ssvep_trials_plot_df,
-                                             data.frame(
-                                               trials = trials,
-                                               samples = mean_list_vectors(
-                                                 ssvep_list_of_vectors)))
-  }
-}
-
-lpp_trials_plot_df <- lpp_trials_plot_df %>% 
-  mutate(trials = factor(trials))
-ssvep_trials_plot_df <- ssvep_trials_plot_df %>% 
-  mutate(trials = factor(trials))
-
-line_thickness = 1.5
-line_alpha = 1
-
-
-(lpp_trials_plot_df %>%  
-    ggplot() +
-    geom_vline(aes(xintercept = 0),
-               linewidth = line_thickness,
-               linetype = "dashed") +
-    geom_line(aes(x = samples, group = trials),
-              color = "black",
-              linewidth = line_thickness +.5, 
-              stat="density",
-              alpha=line_alpha) +
-    geom_line(aes(x = samples, 
-                  color = trials),
-              linewidth = line_thickness, 
-              stat="density",
-              alpha=line_alpha) +
-    scale_color_colorblind(name = "Number of trials per valence") +
-    coord_cartesian(xlim = c(-10, 10)) +
-    scale_x_continuous(breaks = seq(-10, 10, by = 2),
-                       name = "Microvoltage") +
-    ggtitle("LPP posterior predictive") +
-    theme_classic()) /
-  
-  (ssvep_trials_plot_df %>% 
-     ggplot() +
-     geom_vline(aes(xintercept = 0),
-                linewidth = line_thickness,
-                linetype = "dashed") +
-     geom_line(aes(x = samples, group = trials),
-               color = "black",
-               linewidth = line_thickness +.5, 
-               stat="density",
-               alpha=line_alpha) +
-     geom_line(aes(x = samples, 
-                   color = trials),
-               linewidth = line_thickness, 
-               stat="density",
-               alpha=line_alpha) +
-     scale_color_colorblind(name = "Number of trials per valence") +
-     coord_cartesian(xlim = c(.27, -.27)) +
-     scale_x_continuous(breaks = seq(.25, -.25, by = -.05),
-                        labels = round(seq(.25, -.25, by = -.05),2),
-                        name = "Microvoltage") +
-     ggtitle("ssVEP posterior predictive") +
-     # scale_x_reverse() +
-     theme_classic())
-
-lpp_trials_plot_df %>% 
-  group_by(trials) %>% 
-  summarise(percentage = mean(samples > 0) * 100)
-
-ssvep_trials_plot_df %>% 
-  group_by(trials) %>% 
-  summarise(percentage = mean(samples < 0) * 100)
-
-
-
-(model007_draws_df %>% 
-    mutate(lpp_emotional_difference = ((`bcate_lpp[1]` + `bcate_lpp[3]`)/2) - `bcate_lpp[2]`) %>% 
-    select(lpp_emotional_difference,
-           starts_with("bcate_lpp")) %>% 
-    pivot_longer(everything()) %>%
-    ggplot() +
-    geom_density(aes(x = value, fill = name), alpha = .5) +
-    coord_cartesian(xlim = c(-10, 10)) +
-    scale_fill_manual(values = c("blue","green","red","black"),
-                      labels = c("Pleasant",
-                                 "Neutral",
-                                 "Unpleasant",
-                                 "Emotional - Neutral"),
-                      name = "Categories")+
-    scale_x_continuous(breaks = seq(-10,10,by=1),
-                       name = "Microvoltage") +
-    ggtitle("LPP Category Means") +
-    theme_bw()) /
-  
-  (model007_draws_df %>% 
-     mutate(ssvep_emotional_difference = ((`bcate_ssvep[1]` + `bcate_ssvep[3]`)/2) - `bcate_ssvep[2]`) %>% 
-     select(ssvep_emotional_difference,
-            starts_with("bcate_ssvep")) %>% 
-     pivot_longer(everything()) %>%
-     ggplot() +
-     geom_density(aes(x = value, fill = name), alpha = .5) +
-     coord_cartesian(xlim = c(.275, -.275)) +
-     scale_fill_manual(values = c("blue","green","red","black"),
-                       labels = c("Pleasant",
-                                  "Neutral",
-                                  "Unpleasant",
-                                  "Emotional - Neutral"),
-                       name = "Categories")+
-     scale_x_continuous(breaks = seq(.25,-.25, by = -.05),
-                        name = "Microvoltage") +
-     ggtitle("ssVEP Category Means") +
-     theme_bw())
-
-
-
-
-
-# Arousal models ####
-
-# Fit model 8: just arousal erp covariance ####
-
-model008_path <-"/home/andrewf/Repositories/Pic_Vid/pic_vid008_par_arousal.stan"
-
-model008 <- cmdstan_model(model008_path)
-
-model008_fit <- model008$sample(
-  data = data_list_for_stan,
-  refresh = 200,
-  seed = 2, 
-  iter_warmup = 10000,
-  iter_sampling = 8000,
-  save_warmup = F,
-  show_messages = T,
-  chains = 4, 
-  parallel_chains = 4)
-
-model008_meta_data <- model008_fit$metadata()
-
-relevant_model008_parameters <- model008_meta_data$model_params[
-  !str_detect(model008_meta_data$model_params, "log_lik")]
-
-model008_summary <- model008_fit$summary(
-  variables = relevant_model008_parameters)
-
-# model001_loo <- model001_fit$loo(save_psis = TRUE)
-# model002_loo <- model002_fit$loo(save_psis = TRUE)
-model008_loo <- model008_fit$loo(save_psis = TRUE)
-
-# Fit model 9: erp X arousal participant intercepts ####
-
-model009_path <-"/home/andrewf/Repositories/Pic_Vid/pic_vid009_par_arousal.stan"
-
-model009 <- cmdstan_model(model009_path)
-
-model009_fit <- model009$sample(
-  data = data_list_for_stan,
-  refresh = 200,
-  seed = 2, 
-  iter_warmup = 10000,
-  iter_sampling = 8000,
-  save_warmup = F,
-  show_messages = T,
-  chains = 4, 
-  parallel_chains = 4)
-
-model009_meta_data <- model009_fit$metadata()
-
-relevant_model009_parameters <- model009_meta_data$model_params[
-  !str_detect(model009_meta_data$model_params, "log_lik")]
-
-model009_summary <- model009_fit$summary(
-  variables = relevant_model009_parameters)
-
-# model001_loo <- model001_fit$loo(save_psis = TRUE)
-# model002_loo <- model002_fit$loo(save_psis = TRUE)
-model009_loo <- model009_fit$loo(save_psis = TRUE)
-
-model001_loo
-model002_loo
-model007_loo
-model008_loo
-model009_loo
-
-loo::loo_compare(model001_loo, model002_loo, model007_loo,model008_loo, model009_loo)
-loo::loo_model_weights(list(model001_loo, model002_loo, model007_loo,model008_loo, model009_loo))
-loo::loo_model_weights(list(model001_loo, model002_loo))
-loo::loo_model_weights(list(model007_loo, model002_loo))
-loo::loo_model_weights(list(model007_loo, model008_loo))
-loo::loo_model_weights(list(model008_loo, model009_loo))
-loo::loo_model_weights(list(model007_loo, model009_loo))
-
-data_for_stan_df %>% 
-  filter(type == 1) %>% 
-  lm(data = ., formula = amp ~ arousal) %>% 
-  lm.beta::lm.beta()
-  summary()
-
-data_for_stan_df %>% 
-  filter(type == 2) %>% 
-  lm(data = ., formula = amp ~ arousal) %>% 
-  lm.beta::lm.beta()
-  summary()
 
