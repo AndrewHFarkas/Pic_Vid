@@ -222,14 +222,14 @@ lpp_time_key <- data.frame(time_pt = 1:number_of_time_points) %>%
          V_time_pt = paste0("V", time_pt))
 
 ## load by trial data ####
-# Note that par id in data for stan is not the original parids, bad participants already excluded
 load(paste0(parent_directory,
             "/paper_data_models/data/pic_vid_paper.RData"))
 
 ## Get by category / grand means ####
-data_for_stan_df %>%
+lpp_cat_dat <- data_for_stan_df %>%
   filter(type == 1) %>% 
   select(par, cate, amp) %>% 
+  rename("lpp_amp" = amp) %>% 
   group_by(par,cate) %>% 
   summarise_all(mean) %>% 
   mutate("category_name" = case_when(
@@ -237,79 +237,31 @@ data_for_stan_df %>%
     cate == 2 ~ "neutral",
     cate == 3 ~ "unpleasant"),
     .after = cate) %>% 
-  mutate("zscore_amp" = as.numeric(scale(amp)))
+  mutate("zscore_lpp_amp" = as.numeric(scale(lpp_amp)))
 
-
-ssvep_cat_dat <- ssvep_cat_dat %>% 
-  reframe(par_id = stringr::str_extract(ssvep_cat_dat$file_name, "\\d+") %>% as.numeric(),
-          cat_id = stringr::str_extract(ssvep_cat_dat$file_name, pattern = "at[1-3].hamp8$") %>% 
-            stringr::str_extract("\\d+") %>% as.numeric(),
-          ssvep_amp = -amp) %>% 
-  mutate("category" = case_when(
-    cat_id == 1 ~ "pleasant",
-    cat_id == 2 ~ "neutral",
-    cat_id == 3 ~ "unpleasant"),
-    .before = ssvep_amp) %>% 
-  group_by(par_id) %>% 
-  mutate("zscore_ssvep_amp" = as.numeric(scale(ssvep_amp))) %>% 
-  ungroup() %>% 
-  filter(!par_id %in% bad_participants)
+ssvep_cat_dat <- data_for_stan_df %>%
+  filter(type == 2) %>% 
+  select(par, cate, amp) %>% 
+  rename("ssvep_amp" = amp) %>% 
+  group_by(par,cate) %>% 
+  summarise_all(mean) %>% 
+  mutate("category_name" = case_when(
+    cate == 1 ~ "pleasant",
+    cate == 2 ~ "neutral",
+    cate == 3 ~ "unpleasant"),
+    .after = cate) %>% 
+  mutate("zscore_ssvep_amp" = as.numeric(scale(ssvep_amp)))
 
 
 ssvep_lpp_dat_by_participant <- lpp_cat_dat %>% 
-  full_join(ssvep_cat_dat,  by = c("par_id","cat_id", "category")) %>% 
-  mutate(cat_id = factor(cat_id,
-                         levels = c(1,2,3)),
-         category = factor(category,
-                           levels = c("pleasant", "neutral", "unpleasant")))
-
-gm_by_video_ssvep_amp <- by_video_ssvep_amp %>% 
-  group_by(scene) %>% 
-  select(-par_id) %>% 
-  summarise_all(mean) %>% 
-  mutate(Stim_type = factor("Video",
-                            levels = c("Pics",
-                                       "Video")),
-         .before = 1)
-
-gm_lpp_scene_dat <- lpp_scene_dat %>% 
-  reframe(scene = picture,
-          lpp_amp = lpp_amp,
-          zscore_lpp_amp = zscore_lpp_amp) %>% 
-  group_by(scene) %>% 
-  summarise_all(mean) %>% 
-  mutate(Stim_type = factor("Pics",
-                            levels = c("Pics",
-                                       "Video")),
-         .before = 1)
-
-
-gm_erp_by_scene <- rbind.data.frame(rename(gm_by_video_ssvep_amp,
-                                           "amp" = ssvep_amp,
-                                           "zscore_amp" = zscore_ssvep_amp),
-                                    rename(gm_lpp_scene_dat,
-                                           "amp" = lpp_amp,
-                                           "zscore_amp" = zscore_lpp_amp))
-
-by_scene_ratings_with_path <- ratings_data %>% 
-  group_by(Stim_name, Stim_type, Stim_cat) %>% 
-  summarise(mean_aro = mean(arousal),
-            mean_val = mean(valence)) %>% 
-  mutate(path = paste0("/home/andrewf/Research_data/EEG/Pic_Vid/Stimuli/matt_diss/Pics/", 
-                       Stim_name, ".jpg"))  
-
-ratings_erps_path_by_scene <- merge(gm_erp_by_scene, y = by_scene_ratings_with_path,
-                                    by.x = c("Stim_type", "scene"), by.y = c("Stim_type", "Stim_name"))
-
-lpp_scene_dat_ratings <- merge(x = lpp_scene_dat, y = ratings_data[ratings_data$Stim_type == "Pics",], 
-                               by.x = c("picture","par_id"), by.y = c("Stim_name", "par_id"))
-
-by_video_ssvep_amp_ratings <- merge(x = by_video_ssvep_amp, y = ratings_data[ratings_data$Stim_type == "Video",], 
-                                    by.x = c("scene","par_id"), by.y = c("Stim_name", "par_id"))
-
+  full_join(ssvep_cat_dat,  by = c("par","cate", "category_name")) %>% 
+  mutate(cate = factor(cate,
+                       levels = c(1,2,3)),
+         category_name = factor(category_name,
+                                levels = c("pleasant", "neutral", "unpleasant")))
 
 gm_ssvep_lpp <- ssvep_lpp_dat_by_participant %>% 
-  group_by(category) %>% 
+  group_by(category_name) %>% 
   summarise(mean_zscore_lpp   = mean(zscore_lpp_amp, na.rm = T),
             se_zscore_lpp     = plotrix::std.error(zscore_lpp_amp),
             mean_zscore_ssvep = mean(zscore_ssvep_amp, na.rm = T),
@@ -324,8 +276,94 @@ gm_amp_long <- gm_ssvep_lpp %>%
   rename(mean_amp = mean_,
          se_amp = se_) 
 
+gm_by_scene_lpp_amp <-  data_for_stan_df %>%
+  filter(type == 1) %>% 
+  select(par, stim, stim_name, amp, valence, arousal) %>% 
+  rename("lpp_amp" = amp) %>% 
+  group_by(par) %>% 
+  mutate("zscore_lpp_amp" = as.numeric(scale(lpp_amp))) %>%
+  ungroup() %>% 
+  select(-par) %>% 
+  group_by(stim, stim_name) %>% 
+  summarise_all(mean) %>% 
+  ungroup() %>% 
+  mutate(Stim_type = factor("Pics",
+                            levels = c("Pics",
+                                       "Video")),
+         .before = 1)
 
-## Get category waveforms ####
+gm_by_video_ssvep_amp <-  data_for_stan_df %>%
+  filter(type == 2) %>% 
+  select(par, stim, stim_name, amp, valence, arousal) %>% 
+  rename("ssvep_amp" = amp) %>% 
+  group_by(par) %>% 
+  mutate("zscore_ssvep_amp" = as.numeric(scale(ssvep_amp))) %>%
+  ungroup() %>% 
+  select(-par) %>% 
+  group_by(stim, stim_name) %>% 
+  summarise_all(mean) %>% 
+  ungroup() %>% 
+  mutate(Stim_type = factor("Video",
+                            levels = c("Pics",
+                                       "Video")),
+         .before = 1)
+
+# Delete later
+# gm_by_video_ssvep_amp <- by_video_ssvep_amp %>% 
+#   group_by(scene) %>% 
+#   select(-par_id) %>% 
+#   summarise_all(mean) %>% 
+#   mutate(Stim_type = factor("Video",
+#                             levels = c("Pics",
+#                                        "Video")),
+#          .before = 1)
+# 
+# gm_lpp_scene_dat <- lpp_scene_dat %>% 
+#   reframe(scene = picture,
+#           lpp_amp = lpp_amp,
+#           zscore_lpp_amp = zscore_lpp_amp) %>% 
+#   group_by(scene) %>% 
+#   summarise_all(mean) %>% 
+#   mutate(Stim_type = factor("Pics",
+#                             levels = c("Pics",
+#                                        "Video")),
+#          .before = 1)
+
+
+gm_erp_by_scene <- rbind.data.frame(rename(gm_by_scene_lpp_amp,
+                                           "amp" = lpp_amp,
+                                           "zscore_amp" = zscore_lpp_amp),
+                                    rename(gm_by_video_ssvep_amp,
+                                           "amp" = ssvep_amp,
+                                           "zscore_amp" = zscore_ssvep_amp))
+
+by_scene_ratings_with_path <- ratings_data %>% 
+  group_by(Stim_name, Stim_type, Stim_cat) %>% 
+  summarise(mean_aro = mean(arousal),
+            mean_val = mean(valence)) %>% 
+  mutate(path = paste0("/home/andrewf/Research_data/EEG/Pic_Vid/Stimuli/matt_diss/Pics/", 
+                       Stim_name, ".jpg"))  
+
+ratings_erps_path_by_scene <- merge(gm_erp_by_scene, y = by_scene_ratings_with_path,
+                                    by.x = c("Stim_type", "stim_name"), by.y = c("Stim_type", "Stim_name"))
+
+
+
+
+## NOT DONEGet category waveforms ####
+
+lpp_trial_wave <- EMEGShelper::read_ar_files(data_folders = picture_by_scene_ar_directory,
+                                             patterns = ".ar$",
+                                             baseline_pts = c(14:65),
+                                             average_channels = T,
+                                             include_file_name = T,
+                                             extract_channels = lpp_chans)
+
+
+lpp_trial_wave %>% 
+  mutate(par = stringr::str_extract(file_name, "\\d+") %>% as.numeric(),
+         stim = stringr::str_extract(file_name, "(\\d+)(?!.*\\d)") %>% as.numeric(),
+         .before = 1)
 
 # Delete later
 # lpp_cat_dat <- EMEGShelper::read_ar_files(data_folders = picture_by_cat_ar_directory,
