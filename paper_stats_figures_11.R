@@ -19,7 +19,7 @@ if (dir.exists(sabat_data_folder)) {
                                  "/batch_files")
   picture_by_cat_ar_directory <- paste0(sabat_data_folder, 
                                         "/avg_files/pics/by_category")
-  picture_by_cat_wave_directory <- paste0(sabat_data_folder, 
+  picture_by_cat_wave_directory <- paste0(sabat_data_folder,
                                           "/stats_folder/picture_by_cat_49pars/CAVG")
   picture_by_scene_ar_directory <- paste0(sabat_data_folder, 
                                           "/avg_files/pics/by_scene")
@@ -210,7 +210,7 @@ occipital_chans <- c(56, # POz
                      127,# OI2h
                      128)# O10/I2
 
-## Load in category ERPs ####
+## Load in ERPs ####
 # lpp 400ms 279pt - 900ms 526pt
 start_time_ms <- -125
 number_of_time_points <- 1089
@@ -221,142 +221,23 @@ lpp_time_key <- data.frame(time_pt = 1:number_of_time_points) %>%
            ((((1:number_of_time_points)-1) * (1000/sample_rate_hz))),
          V_time_pt = paste0("V", time_pt))
 
-lpp_cat_dat <- EMEGShelper::read_ar_files(data_folders = picture_by_cat_ar_directory,
-                                          patterns = ".ar$",
-                                          baseline_pts = c(14:65),
-                                          select_time_points = c(279:526),
-                                          average_channels = T,
-                                          average_timepoints = T,
-                                          include_file_name = T,
-                                          extract_channels = lpp_chans) %>% 
-  rename(amp = V1)
+## load by trial data ####
+# Note that par id in data for stan is not the original parids, bad participants already excluded
+load(paste0(parent_directory,
+            "/paper_data_models/data/pic_vid_paper.RData"))
 
-lpp_cat_wave <- EMEGShelper::read_ar_files(data_folders = picture_by_cat_wave_directory,
-                                           patterns = ".ar$",
-                                           baseline_pts = c(14:65),
-                                           average_channels = T,
-                                           include_file_name = T,
-                                           extract_channels = lpp_chans)
-lpp_cat_wave <- lpp_cat_wave %>% 
-  mutate(category = case_when(
-    file_name == "CAVG.cat3.pleasant.at.ar" ~ "pleasant",
-    file_name == "CAVG.cat3.neutral.at.ar" ~ "neutral",
-    file_name == "CAVG.cat3.unpleasant.at.ar" ~ "unpleasant"), .before = V1) %>%
-  mutate(category = factor(category,
-                           levels = c("pleasant", "neutral", "unpleasant"))) %>% 
-  select(-file_name) %>% 
-  pivot_longer(cols = starts_with("V"), 
-               values_to = "amp",
-               names_to = "time_point") %>% 
-  merge(y = lpp_time_key, by.x = "time_point", by.y = "V_time_pt", all.x = T) %>% 
-  select(time_ms, category, amp) %>% 
-  arrange(category, time_ms)
-
-
-
-
-# ssVEP 1000ms 1537pt - 9000ms 5633pt
-start_time_ms <- -2000
-number_of_time_points <- 6146
-sample_rate_hz <- 512
-
-ssvep_time_key <- data.frame(time_pt = 1:number_of_time_points) %>% 
-  mutate(time_ms = rep(start_time_ms,number_of_time_points) + 
-           ((((1:number_of_time_points)-1) * (1000/sample_rate_hz))),
-         V_time_pt = paste0("V", time_pt))
-
-ssvep_cat_dat <- EMEGShelper::read_ar_files(data_folders = video_by_cat_directory,
-                                            patterns = ".hamp8$",
-                                            select_time_points = c(1537:5633),
-                                            average_channels = T,
-                                            average_timepoints = T,
-                                            include_file_name = T,
-                                            extract_channels = occipital_chans) %>% 
-  rename(amp = V1)
-
-ssvep_cat_wave <- EMEGShelper::read_ar_files(data_folders = video_by_cat_wave_directory,
-                                             patterns = ".ar$",
-                                             average_channels = T,
-                                             include_file_name = T,
-                                             extract_channels = occipital_chans)
-
-ssvep_cat_wave <- ssvep_cat_wave %>% 
-  mutate(category = case_when(
-    file_name == "CAVG.cat3.pleasant.at.ar" ~ "pleasant",
-    file_name == "CAVG.cat3.neutral.at.ar" ~ "neutral",
-    file_name == "CAVG.cat3.unpleasant.at.ar" ~ "unpleasant"), .before = V1) %>%
-  mutate(category = factor(category,
-                           levels = c("pleasant", "neutral", "unpleasant"))) %>% 
-  select(-file_name) %>% 
-  pivot_longer(cols = starts_with("V"), 
-               values_to = "amp",
-               names_to = "time_point") %>% 
-  merge(y = ssvep_time_key, by.x = "time_point", by.y = "V_time_pt", all.x = T) %>% 
-  select(time_ms, category, amp) %>% 
-  arrange(category, time_ms)
-
-## Load by video/scene ERPs####
-# ssVEP by video
-
-load(paste0(parent_directory,"/misc/by_video.RData"))
-
-by_video_ssvep_amp <- by_scene_info %>% 
-  filter(channel_names %in% occipital_chans) %>% 
-  select(!any_of(c("category", "scene_id_con_num", "file_name", "channel_names"))) %>% 
-  group_by(par_id, scene) %>% 
+## Get by category / grand means ####
+data_for_stan_df %>%
+  filter(type == 1) %>% 
+  select(par, cate, amp) %>% 
+  group_by(par,cate) %>% 
   summarise_all(mean) %>% 
-  ungroup() %>% 
-  mutate(., ssvep_amp = rowMeans(as.matrix(select(., paste0("V", c(1537:5633))))),
-         .after = "scene") %>% 
-  group_by(par_id) %>% 
-  mutate(zscore_ssvep_amp = as.numeric(scale(ssvep_amp), .after = "ssvep_amp")) %>% 
-  select(par_id, scene, ssvep_amp, zscore_ssvep_amp) %>% 
-  ungroup() %>% 
-  mutate(par_id = stringr::str_extract(par_id, "\\d+") %>% as.numeric()) %>% 
-  filter(!par_id %in% bad_participants)
-
-# lpp by scene
-lpp_scene_dat <- EMEGShelper::read_ar_files(data_folders = picture_by_scene_ar_directory,
-                                            patterns = ".ar$",
-                                            baseline_pts = c(14:65),
-                                            select_time_points = c(279:526),
-                                            average_channels = T,
-                                            average_timepoints = T,
-                                            include_file_name = T,
-                                            extract_channels = lpp_chans) %>% 
-  rename(amp = V1)
-
-
-lpp_scene_dat <- lpp_scene_dat %>% 
-  reframe(par_id = stringr::str_extract(file_name, "\\d+") %>% as.numeric(),
-          scene_id = stringr::str_extract(file_name, "(\\d+)(?!.*\\d)") %>% as.numeric(),
-          lpp_amp = amp) %>% 
-  group_by(par_id) %>% 
-  mutate(zscore_lpp_amp = as.numeric(scale(lpp_amp)))
-
-pic_id_key <- read.csv(paste0(parent_directory, "/misc/Picture_id_number.csv"))
-
-lpp_scene_dat <- merge(x = lpp_scene_dat, 
-                       y = pic_id_key, 
-                       by.x = "scene_id", 
-                       by.y = "con_id", 
-                       all.x = T)
-
-
-# Consolidate and merge data####
-lpp_cat_dat <- lpp_cat_dat %>% 
-  reframe(par_id = stringr::str_extract(lpp_cat_dat$file_name, "\\d+") %>% as.numeric(),
-          cat_id = stringr::str_extract(lpp_cat_dat$file_name, "(\\d+)(?!.*\\d)") %>% as.numeric(),
-          lpp_amp = amp) %>% 
-  mutate("category" = case_when(
-    cat_id == 1 ~ "pleasant",
-    cat_id == 2 ~ "neutral",
-    cat_id == 3 ~ "unpleasant"),
-    .before = lpp_amp) %>% 
-  group_by(par_id) %>% 
-  mutate("zscore_lpp_amp" = as.numeric(scale(lpp_amp))) %>% 
-  ungroup() %>% 
-  filter(!par_id %in% bad_participants)
+  mutate("category_name" = case_when(
+    cate == 1 ~ "pleasant",
+    cate == 2 ~ "neutral",
+    cate == 3 ~ "unpleasant"),
+    .after = cate) %>% 
+  mutate("zscore_amp" = as.numeric(scale(amp)))
 
 
 ssvep_cat_dat <- ssvep_cat_dat %>% 
@@ -444,11 +325,112 @@ gm_amp_long <- gm_ssvep_lpp %>%
          se_amp = se_) 
 
 
+## Get category waveforms ####
 
-## By category data ####
+# Delete later
+# lpp_cat_dat <- EMEGShelper::read_ar_files(data_folders = picture_by_cat_ar_directory,
+#                                           patterns = ".ar$",
+#                                           baseline_pts = c(14:65),
+#                                           select_time_points = c(279:526),
+#                                           average_channels = T,
+#                                           average_timepoints = T,
+#                                           include_file_name = T,
+#                                           extract_channels = lpp_chans) %>% 
+#   rename(amp = V1)
+# 
+# lpp_cat_wave <- EMEGShelper::read_ar_files(data_folders = picture_by_cat_wave_directory,
+#                                            patterns = ".ar$",
+#                                            baseline_pts = c(14:65),
+#                                            average_channels = T,
+#                                            include_file_name = T,
+#                                            extract_channels = lpp_chans)
 
-load(paste0(parent_directory,
-            "/paper_data_models/data/pic_vid_paper.RData"))
+lpp_cat_wave <- lpp_cat_wave %>% 
+  mutate(category = case_when(
+    file_name == "CAVG.cat3.pleasant.at.ar" ~ "pleasant",
+    file_name == "CAVG.cat3.neutral.at.ar" ~ "neutral",
+    file_name == "CAVG.cat3.unpleasant.at.ar" ~ "unpleasant"), .before = V1) %>%
+  mutate(category = factor(category,
+                           levels = c("pleasant", "neutral", "unpleasant"))) %>% 
+  select(-file_name) %>% 
+  pivot_longer(cols = starts_with("V"), 
+               values_to = "amp",
+               names_to = "time_point") %>% 
+  merge(y = lpp_time_key, by.x = "time_point", by.y = "V_time_pt", all.x = T) %>% 
+  select(time_ms, category, amp) %>% 
+  arrange(category, time_ms)
+
+
+
+
+# ssVEP 1000ms 1537pt - 9000ms 5633pt
+start_time_ms <- -2000
+number_of_time_points <- 6146
+sample_rate_hz <- 512
+
+ssvep_time_key <- data.frame(time_pt = 1:number_of_time_points) %>% 
+  mutate(time_ms = rep(start_time_ms,number_of_time_points) + 
+           ((((1:number_of_time_points)-1) * (1000/sample_rate_hz))),
+         V_time_pt = paste0("V", time_pt))
+
+ssvep_cat_dat <- EMEGShelper::read_ar_files(data_folders = video_by_cat_directory,
+                                            patterns = ".hamp8$",
+                                            select_time_points = c(1537:5633),
+                                            average_channels = T,
+                                            average_timepoints = T,
+                                            include_file_name = T,
+                                            extract_channels = occipital_chans) %>% 
+  rename(amp = V1)
+
+ssvep_cat_wave <- EMEGShelper::read_ar_files(data_folders = video_by_cat_wave_directory,
+                                             patterns = ".ar$",
+                                             average_channels = T,
+                                             include_file_name = T,
+                                             extract_channels = occipital_chans)
+
+ssvep_cat_wave <- ssvep_cat_wave %>% 
+  mutate(category = case_when(
+    file_name == "CAVG.cat3.pleasant.at.ar" ~ "pleasant",
+    file_name == "CAVG.cat3.neutral.at.ar" ~ "neutral",
+    file_name == "CAVG.cat3.unpleasant.at.ar" ~ "unpleasant"), .before = V1) %>%
+  mutate(category = factor(category,
+                           levels = c("pleasant", "neutral", "unpleasant"))) %>% 
+  select(-file_name) %>% 
+  pivot_longer(cols = starts_with("V"), 
+               values_to = "amp",
+               names_to = "time_point") %>% 
+  merge(y = ssvep_time_key, by.x = "time_point", by.y = "V_time_pt", all.x = T) %>% 
+  select(time_ms, category, amp) %>% 
+  arrange(category, time_ms)
+
+## Load by video/scene ERPs####
+# ssVEP by video
+
+load(paste0(parent_directory,"/misc/by_video.RData"))
+
+by_video_ssvep_amp <- by_scene_info %>% 
+  filter(channel_names %in% occipital_chans) %>% 
+  select(!any_of(c("category", "scene_id_con_num", "file_name", "channel_names"))) %>% 
+  group_by(par_id, scene) %>% 
+  summarise_all(mean) %>% 
+  ungroup() %>% 
+  mutate(., ssvep_amp = rowMeans(as.matrix(select(., paste0("V", c(1537:5633))))),
+         .after = "scene") %>% 
+  group_by(par_id) %>% 
+  mutate(zscore_ssvep_amp = as.numeric(scale(ssvep_amp), .after = "ssvep_amp")) %>% 
+  select(par_id, scene, ssvep_amp, zscore_ssvep_amp) %>% 
+  ungroup() %>% 
+  mutate(par_id = stringr::str_extract(par_id, "\\d+") %>% as.numeric()) %>% 
+  filter(!par_id %in% bad_participants)
+
+
+
+
+
+
+
+
+
 
 
 
@@ -2481,7 +2463,7 @@ fig7_ssvep_bottom <- ssvep_erot_surg_val_posteriors %>%
 
 fig7_lpp_top + fig7_ssvep_bottom +
   plot_layout(design = layout_grid, guides = "collect")  +
-  plot_annotation(title = "Video-ssVEP Lacks Typical Erotica and Gore Sensitivity",
+  plot_annotation(title = "Video-ssVEP Lacks Typical Scene-LPP Erotica and Gore Sensitivity",
                   theme = theme(
                     plot.title = element_text(family = font_font,
                                               size = font_size + 2.65,
@@ -2496,6 +2478,38 @@ ggsave(filename = paste0(parent_directory,
        device = "tiff",dpi = 300,
        units = "in",height = 8, width = 8.6,
        scale = 1.1)
+
+# RR Figure 7 ####
+
+data_for_stan_df %>% 
+  mutate(cate_f7 = case_when(
+    stim %in% couple_ids ~ "couple",
+    stim %in% surgery_ids ~ "surgery",
+    cate == 1 ~ "pleasant",
+    cate == 2 ~ "neutral",
+    cate == 3 ~ "unpleasant"
+  )) %>% 
+  mutate(cate_f7 = factor(cate_f7,levels = c("couple",
+                                             "pleasant",
+                                             "neutral",
+                                             "unpleasant",
+                                             "surgery"))) %>% 
+  select(par, type, cate_f7, valence, arousal) %>% 
+  group_by(par, type, cate_f7) %>% 
+  summarise_all(mean) %>% 
+  group_by(type, cate_f7) %>% 
+  summarise(mean_aro = mean(arousal),
+            se_aro = plotrix::std.error(arousal)) %>%
+  ggplot() +
+  geom_pointrange(aes(x = cate_f7,
+                      y = mean_aro,
+                      ymin = mean_aro - se_aro,
+                      ymax = mean_aro + se_aro,
+                      color = cate_f7)) +
+  scale_color_manual(values = fig7_colors) +
+  facet_grid(~type) +
+  theme_classic()
+  
 
 # Supplemental Figure 1 ####
 library(tidyverse)
