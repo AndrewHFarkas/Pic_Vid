@@ -264,7 +264,7 @@ gm_ssvep_lpp <- ssvep_lpp_dat_by_participant %>%
   group_by(category_name) %>% 
   summarise(mean_zscore_lpp   = mean(zscore_lpp_amp, na.rm = T),
             se_zscore_lpp     = plotrix::std.error(zscore_lpp_amp),
-            mean_zscore_ssvep = mean(zscore_ssvep_amp, na.rm = T),
+            mean_zscore_ssvep = mean(-zscore_ssvep_amp, na.rm = T),
             se_zscore_ssvep   = plotrix::std.error(zscore_ssvep_amp))
 
 gm_amp_long <- gm_ssvep_lpp %>% 
@@ -350,7 +350,16 @@ ratings_erps_path_by_scene <- merge(gm_erp_by_scene, y = by_scene_ratings_with_p
 
 
 
-## NOT DONEGet category waveforms ####
+## Get category waveforms ####
+# note that matched pairs of videos and scenes did not have the same id
+# number in the original study so different keys have to be used
+pic_id_key <- read.csv(paste0(parent_directory, "/misc/Picture_id_number.csv"))
+
+stim_name_cate <- data_for_stan_df %>% 
+  select(stim_name, cate) %>% 
+  group_by(stim_name, cate) %>% 
+  summarise_all(mean)
+
 
 lpp_trial_wave <- EMEGShelper::read_ar_files(data_folders = picture_by_scene_ar_directory,
                                              patterns = ".ar$",
@@ -359,47 +368,49 @@ lpp_trial_wave <- EMEGShelper::read_ar_files(data_folders = picture_by_scene_ar_
                                              include_file_name = T,
                                              extract_channels = lpp_chans)
 
-
-lpp_trial_wave %>% 
+lpp_trial_wave <- lpp_trial_wave %>% 
   mutate(par = stringr::str_extract(file_name, "\\d+") %>% as.numeric(),
          stim = stringr::str_extract(file_name, "(\\d+)(?!.*\\d)") %>% as.numeric(),
-         .before = 1)
+         .before = 1) 
 
-# Delete later
-# lpp_cat_dat <- EMEGShelper::read_ar_files(data_folders = picture_by_cat_ar_directory,
-#                                           patterns = ".ar$",
-#                                           baseline_pts = c(14:65),
-#                                           select_time_points = c(279:526),
-#                                           average_channels = T,
-#                                           average_timepoints = T,
-#                                           include_file_name = T,
-#                                           extract_channels = lpp_chans) %>% 
-#   rename(amp = V1)
-# 
-# lpp_cat_wave <- EMEGShelper::read_ar_files(data_folders = picture_by_cat_wave_directory,
-#                                            patterns = ".ar$",
-#                                            baseline_pts = c(14:65),
-#                                            average_channels = T,
-#                                            include_file_name = T,
-#                                            extract_channels = lpp_chans)
+lpp_trial_wave <- lpp_trial_wave %>% 
+  filter(!par %in% bad_participants)
 
-lpp_cat_wave <- lpp_cat_wave %>% 
-  mutate(category = case_when(
-    file_name == "CAVG.cat3.pleasant.at.ar" ~ "pleasant",
-    file_name == "CAVG.cat3.neutral.at.ar" ~ "neutral",
-    file_name == "CAVG.cat3.unpleasant.at.ar" ~ "unpleasant"), .before = V1) %>%
-  mutate(category = factor(category,
+
+lpp_trial_wave <- merge(x = pic_id_key, 
+              y = lpp_trial_wave, 
+              by.x = "con_id", 
+              by.y = "stim", 
+              all.y = T)
+
+lpp_trial_wave <- merge(x = stim_name_cate, 
+                        y = lpp_trial_wave, 
+                        by.x = "stim_name", 
+                        by.y = "picture", 
+                        all.y = T)
+
+
+lpp_cat_wave <- lpp_trial_wave %>% 
+  select(-c(stim_name, par, file_name)) %>% 
+  mutate(category_name = case_when(
+    cate == 1 ~ "pleasant",
+    cate == 2 ~ "neutral",
+    cate == 3 ~ "unpleasant"), .before = 1) %>% 
+  mutate(category_name = factor(category_name,
                            levels = c("pleasant", "neutral", "unpleasant"))) %>% 
-  select(-file_name) %>% 
+  group_by(category_name) %>% 
+  summarise_all(mean) %>% 
+  ungroup() %>% 
   pivot_longer(cols = starts_with("V"), 
                values_to = "amp",
                names_to = "time_point") %>% 
   merge(y = lpp_time_key, by.x = "time_point", by.y = "V_time_pt", all.x = T) %>% 
-  select(time_ms, category, amp) %>% 
-  arrange(category, time_ms)
+  select(time_ms, category_name, amp) %>% 
+  arrange(category_name, time_ms)
 
-
-
+## Load by video/scene ERPs####
+# ssVEP by video
+load(paste0(parent_directory,"/misc/by_video.RData"))
 
 # ssVEP 1000ms 1537pt - 9000ms 5633pt
 start_time_ms <- -2000
@@ -411,14 +422,50 @@ ssvep_time_key <- data.frame(time_pt = 1:number_of_time_points) %>%
            ((((1:number_of_time_points)-1) * (1000/sample_rate_hz))),
          V_time_pt = paste0("V", time_pt))
 
-ssvep_cat_dat <- EMEGShelper::read_ar_files(data_folders = video_by_cat_directory,
-                                            patterns = ".hamp8$",
-                                            select_time_points = c(1537:5633),
-                                            average_channels = T,
-                                            average_timepoints = T,
-                                            include_file_name = T,
-                                            extract_channels = occipital_chans) %>% 
-  rename(amp = V1)
+ssvep_cat_wave <- by_scene_info %>% 
+  mutate(par = stringr::str_extract(file_name, "\\d+") %>% 
+           as.numeric(),.before = "par_id") %>% 
+  filter(!par %in% bad_participants) %>% 
+  filter(channel_names %in% occipital_chans) %>% 
+  select(-c(scene_id_con_num,scene,par,par_id,file_name,channel_names)) %>% 
+  group_by(category) %>% 
+  summarise_all(mean) %>% 
+  mutate(category = case_when(
+    category == 1 ~ "pleasant",
+    category == 2 ~ "neutral",
+    category == 3 ~ "unpleasant"), .before = V1) %>%
+  mutate(category = factor(category,
+                           levels = c("pleasant", "neutral", "unpleasant"))) %>% 
+  pivot_longer(cols = starts_with("V"), 
+               values_to = "amp",
+               names_to = "time_point") %>% 
+  merge(y = ssvep_time_key, by.x = "time_point", by.y = "V_time_pt", all.x = T) %>% 
+  select(time_ms, category, amp) %>% 
+  arrange(category, time_ms)
+
+#delete
+  select(!any_of(c("category", "scene_id_con_num", "file_name", "channel_names"))) %>% 
+  group_by(par_id, scene) %>% 
+  summarise_all(mean) %>% 
+  ungroup() %>% 
+  mutate(., ssvep_amp = rowMeans(as.matrix(select(., paste0("V", c(1537:5633))))),
+         .after = "scene") %>% 
+  group_by(par_id) %>% 
+  mutate(zscore_ssvep_amp = as.numeric(scale(ssvep_amp), .after = "ssvep_amp")) %>% 
+  select(par_id, scene, ssvep_amp, zscore_ssvep_amp) %>% 
+  ungroup() %>% 
+  mutate(par_id = stringr::str_extract(par_id, "\\d+") %>% as.numeric()) %>% 
+  filter(!par_id %in% bad_participants)
+
+# ssVEP 1000ms 1537pt - 9000ms 5633pt
+start_time_ms <- -2000
+number_of_time_points <- 6146
+sample_rate_hz <- 512
+
+ssvep_time_key <- data.frame(time_pt = 1:number_of_time_points) %>% 
+  mutate(time_ms = rep(start_time_ms,number_of_time_points) + 
+           ((((1:number_of_time_points)-1) * (1000/sample_rate_hz))),
+         V_time_pt = paste0("V", time_pt))
 
 ssvep_cat_wave <- EMEGShelper::read_ar_files(data_folders = video_by_cat_wave_directory,
                                              patterns = ".ar$",
@@ -441,25 +488,6 @@ ssvep_cat_wave <- ssvep_cat_wave %>%
   select(time_ms, category, amp) %>% 
   arrange(category, time_ms)
 
-## Load by video/scene ERPs####
-# ssVEP by video
-
-load(paste0(parent_directory,"/misc/by_video.RData"))
-
-by_video_ssvep_amp <- by_scene_info %>% 
-  filter(channel_names %in% occipital_chans) %>% 
-  select(!any_of(c("category", "scene_id_con_num", "file_name", "channel_names"))) %>% 
-  group_by(par_id, scene) %>% 
-  summarise_all(mean) %>% 
-  ungroup() %>% 
-  mutate(., ssvep_amp = rowMeans(as.matrix(select(., paste0("V", c(1537:5633))))),
-         .after = "scene") %>% 
-  group_by(par_id) %>% 
-  mutate(zscore_ssvep_amp = as.numeric(scale(ssvep_amp), .after = "ssvep_amp")) %>% 
-  select(par_id, scene, ssvep_amp, zscore_ssvep_amp) %>% 
-  ungroup() %>% 
-  mutate(par_id = stringr::str_extract(par_id, "\\d+") %>% as.numeric()) %>% 
-  filter(!par_id %in% bad_participants)
 
 
 
@@ -1539,16 +1567,16 @@ valence_colors <- c("blue1","black", "red1", "white")
 
 
 gm_amp_dot_plot <- ggplot(gm_amp_long) +
-  geom_pointrange(aes(x = category, shape = erp_type,
+  geom_pointrange(aes(x = category_name, shape = erp_type,
                       y = mean_amp, ymax = mean_amp + se_amp,
                       ymin = mean_amp - se_amp),
                   color = "black",
                   position = position_dodge(width = 0.4),
                   size = 2.5, linewidth = 4) + 
-  geom_pointrange(aes(x = category, shape = erp_type,
+  geom_pointrange(aes(x = category_name, shape = erp_type,
                       y = mean_amp, ymax = mean_amp + se_amp,
                       ymin = mean_amp - se_amp,
-                      color = category),
+                      color = category_name),
                   position = position_dodge(width = 0.4),
                   size = 2, linewidth = 2) + 
   scale_y_continuous(breaks = y_axis_breaks,
@@ -1591,10 +1619,10 @@ lpp_cat_wave_plot <- lpp_cat_wave %>%
             aes(x = x, y = y), linetype = "dashed") +
   geom_rect(aes(xmin = 400, xmax = 900, ymin = -Inf, ymax = Inf),
             fill = "lightgray")+
-  geom_line(aes(x = time_ms, y = amp, group = category),
+  geom_line(aes(x = time_ms, y = amp, group = category_name),
             color = "black",
             linewidth = line_width + line_outline) +
-  geom_line(aes(x = time_ms, y = amp, color = category),
+  geom_line(aes(x = time_ms, y = amp, color = category_name),
             linewidth = line_width) +
   geom_text(aes(x = 200, y = 1.75), 
             label = "Pleasant",
@@ -1639,7 +1667,8 @@ ssvep_cat_wave_plot <- ssvep_cat_wave %>%
             linewidth = line_width + line_outline) +
   geom_line(aes(x = time_ms, y = amp, color = category),
             linewidth = line_width) +
-  scale_y_continuous(limits = c(.9, 1.25),
+  scale_y_continuous(limits = c(.93, 1.28),
+                     breaks = seq(.95,1.25,by = .05),
                      expand = c(0,0), name = "ssVEP (μV)") +
   scale_x_continuous(limits = c(-2000,10000),expand = c(0,0),
                      breaks = seq(-1000, 9000, by = 1000),
