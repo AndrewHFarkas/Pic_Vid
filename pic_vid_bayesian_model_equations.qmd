@@ -17,7 +17,7 @@ $Stim$ is a vector of stimuli indices (1 to 90) for each $Amplitude$.
 $$
 \begin{gather}
 Amplitude_{[i]} \sim Normal(\mu_{[i]},\sigma_{[Par[i]]}) \tag{1}\\
-\mu_{[i]} = \beta1_{[Par[i]]} + \beta2_{[Stim[i]]} \tag{2}
+\mu_{[i]} = \beta_{1[Par[i]]} + \beta_{2[Stim[i]]} \tag{2}
 \end{gather}
 $$
 
@@ -25,9 +25,9 @@ $$
 
 $$
 \begin{gather}
-\beta1_{[j]} \sim Normal(\bar{Par}, \sigma Par) \tag{3}\\
-\beta2_{[k]} \sim Normal(0, \sigma Stim) \tag{4}\\
-\sigma_{[j]} \sim Normal(\bar{\sigma}, \tau) \tag{5}
+\beta_{1[j]} \sim Normal(\overline{Par}, \sigma Par) \tag{3}\\
+\beta_{2[k]} \sim Normal(0, \sigma Stim) \tag{4}\\
+\sigma_{[j]} \sim Normal(\overline{\sigma}, \tau) \tag{5}
 \end{gather}
 $$
 
@@ -35,12 +35,18 @@ $$
 
 $$
 \begin{gather}
-\bar{Par} \sim Normal(\bar{Amplitude},2 \cdot SD(Amplitude)) \tag{6}\\
-\sigma Par,\sigma Stim,\bar{\sigma},\tau \sim HalfNormal(0,2 \cdot SD(Amplitude)) \tag{7}
+\overline{Par} \sim Normal(\overline{Amplitude},2 \cdot SD(Amplitude)) \tag{6}\\
+\sigma Par,\sigma Stim,\overline{\sigma},\tau \sim HalfNormal(0,2 \cdot SD(Amplitude)) \tag{7}
 \end{gather}
 $$
 
-## Model 2:<br>Multilevel Amplitude and Arousal Bivariate Distribution {style="text-align: center;"}
+## SNR formula
+
+$$
+{\text{Model 1 SNR}} = \frac {\overline{\beta_2 [\text{emotional stimuli}]} - \overline{\beta_2 [\text{neutral stimuli}]}} {\overline{\sigma}} \tag{8}
+$$
+
+## Model 2:<br>Multilevel Amplitude and Arousal Bivariate Distribution {style="text-align: center; white-space: nowrap;"}
 
 Where ( $i$ ) indexes all observations and ( $j$ ) indexes all 45 participants. 
 
@@ -63,14 +69,14 @@ $$
 \begin{array}{c}
 {\huge \Sigma}_{[Par[i]]}
 \end{array}
-\right) \tag{1}\\
+\right) \tag{9}\\
 \begin{array}{c}
 {\huge \Sigma}_{[Par[i]]}
 \end{array} = 
 \begin{bmatrix}
 \sigma Amp_{[Par[i]]}^2 & \sigma Amp Aro_{[Par[i]]} \\
 \sigma Amp Aro_{[Par[i]]} & \sigma Aro_{[Par[i]]}^2
-\end{bmatrix} \tag{2}
+\end{bmatrix} \tag{10}
 \end{gather}
 $$
 
@@ -82,11 +88,11 @@ $$
 
 $$
 \begin{gather}
-\mu Amp_{[j]} \sim Normal(\bar{\mu Amp},\sigma Par Amp) \tag{3}\\
-\mu Aro_{[j]} \sim Normal(\bar{\mu Aro},\sigma Par Aro) \tag{4}\\
-\sigma Amp_{[j]} \sim Normal(\bar{\sigma Amp}, \tau ParAmp) \tag{5}\\
-\sigma Aro_{[j]} \sim Normal(\bar{\sigma Aro}, \tau ParAro) \tag{6}\\
-\sigma Amp Aro_{[j]} \sim Normal(\bar{\sigma Amp Aro}, \tau AmpAro) \tag{7}
+\mu Amp_{[j]} \sim Normal(\overline{\mu Amp},\sigma Par Amp) \tag{11}\\
+\mu Aro_{[j]} \sim Normal(\overline{\mu Aro},\sigma Par Aro) \tag{12}\\
+\sigma Amp_{[j]} \sim Normal(\overline{\sigma Amp}, \tau ParAmp) \tag{13}\\
+\sigma Aro_{[j]} \sim Normal(\overline{\sigma Aro}, \tau ParAro) \tag{14}\\
+\sigma Amp Aro_{[j]} \sim Normal(\overline{\sigma Amp Aro}, \tau AmpAro) \tag{15}
 \end{gather}
 $$
 
@@ -94,28 +100,31 @@ $$
 
 $$
 \begin{gather}
-\bar{\mu Amp} \sim Normal(\bar{Amplitude},2 \cdot SD(Amplitude)) \tag{8}\\
-\sigma Par Amp,\bar{\sigma Amp},\tau ParAmp,\tau AmpAro \sim HalfNormal(0,2 \cdot SD(Amplitude)) \tag{9}\\
-\bar{\mu Aro} \sim (Beta(1.1,1.1) \cdot 8) + 1 \tag{10}\\
-\sigma Par Aro,\bar{\sigma Aro},\tau ParAro \sim HalfNormal(0,4) \tag{11}\\
-\bar{\sigma Amp Aro} \sim Normal(0,2 \cdot SD(Amplitude)) \tag{12}
+\overline{\mu Amp} \sim Normal(\overline{Amplitude},2 \cdot SD(Amplitude)) \tag{16}\\
+\sigma Par Amp,\overline{\sigma Amp},\tau ParAmp,\tau AmpAro \sim HalfNormal(0,2 \cdot SD(Amplitude)) \tag{17}\\
+\overline{\mu Aro} \sim (Beta(1.1,1.1) \cdot 8) + 1 \tag{18}\\
+\sigma Par Aro,\overline{\sigma Aro},\tau ParAro \sim HalfNormal(0,4) \tag{19}\\
+\overline{\sigma Amp Aro} \sim Normal(0,2 \cdot SD(Amplitude)) \tag{20}
 \end{gather}
 $$
+
+
 
 ## Model 2 Amplitude log-likelihood equation{style="text-align: center;"}
 
 $$
 \begin{gather}
-\mu Amp \vert Arousal_{[i]} = \mu Amp_{[Par[i]]} + \frac {\sigma Amp Aro_{[Par[i]]}} {\sigma Aro_{[Par[i]]}^2} (Arousal_{[i]} - \mu Aro_{[Par[i]]}) \tag{1}\\
-\sigma Amp \vert Arousal_{[i]}^2 = \sigma Amp_{[Par[i]]}^2 - \frac {\sigma Amp Aro_{[Par[i]]}} {\sigma Aro_{[Par[i]]}^2} \tag{2}
+\mu Amp \vert Arousal_{[i]} = \mu Amp_{[Par[i]]} + \frac {\sigma Amp Aro_{[Par[i]]}} {\sigma Aro_{[Par[i]]}^2} (Arousal_{[i]} - \mu Aro_{[Par[i]]}) \tag{21}\\
+\sigma Amp \vert Arousal_{[i]}^2 = \sigma Amp_{[Par[i]]}^2 - \frac {\sigma Amp Aro_{[Par[i]]}} {\sigma Aro_{[Par[i]]}^2} \tag{22}
 \end{gather}
 $$
 
 ## R^2 formula
 
 $$
-R^2 = \frac {\text{variance of predicted observations}} {(\text{variance of predicted observations } + \text{residual variance})}
+R^2 = \frac {\text{variance of predicted observations}} {(\text{variance of predicted observations } + \text{residual variance})} \tag{23}
 $$
+
 
 
 

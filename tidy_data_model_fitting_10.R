@@ -526,14 +526,11 @@ data_list_for_stan_ssvep$arousal = data_for_stan_df[data_for_stan_df$type == 2,]
 
 
 # Data used for paper_stats_figures_11 ####
-
-
-# save(ssvep_lpp_dat_by_participant,
-#      ratings_erps_path_by_scene,
-#      gm_
-#      data_for_stan_df, 
-#      file = paste0(parent_directory,
-#                    "/paper_data_models/data/pic_vid_paper.RData"))
+save(data_for_stan_df,
+     data_list_for_stan_lpp,
+     data_list_for_stan_ssvep,
+     file = paste0(parent_directory,
+                   "/paper_data_models/data/pic_vid_paper.RData"))
 
 # Fit models ####
 # fit ssvep and lpp separately, but use same model for each
@@ -1267,10 +1264,74 @@ model012_lpp_fit_summary <- model012_lpp_fit$summary(
 model012_ssvep_fit_summary <- model012_ssvep_fit$summary(
   variables = model012_ssvep_fit_relevant_parameters)
 
-## 13 Multi-level participant clusters ####
+## 13 Multi-level intercept slope seperate par amp_sd ####
 model_name <- "model013_par_intercept_arousal_slope_ML_sd"
 
 model013_path <- paste0(pic_vid_repository,
+                        "/stan_models/", 
+                        model_name,
+                        ".stan")
+
+# Clear previous chains
+list.files(path = paste0(parent_directory,"/paper_data_models/models/chains/"),
+           pattern = model_name,
+           full.names = T) %>% 
+  file.remove()
+
+model013 <- cmdstan_model(model013_path, force_recompile = T)
+
+model013_lpp_fit <- model013$sample(
+  data = data_list_for_stan_lpp,
+  # init=1,
+  refresh = 200, 
+  seed = 3, 
+  iter_warmup = 5000,
+  iter_sampling = posterior_samples_per_chain,
+  save_warmup = F,
+  show_messages = T,
+  output_dir = paste0(parent_directory,"/paper_data_models/models/chains"),
+  chains = number_of_chains, 
+  parallel_chains = number_of_parallel_chains)
+
+
+model013_ssvep_fit <- model013$sample(
+  data = data_list_for_stan_ssvep,
+  # init=2,
+  refresh = 200, 
+  seed = 3, 
+  iter_warmup = 5000,
+  iter_sampling = posterior_samples_per_chain,
+  save_warmup = F,
+  show_messages = T,
+  output_dir = paste0(parent_directory,"/paper_data_models/models/chains"),
+  chains = number_of_chains, 
+  parallel_chains = number_of_parallel_chains)
+
+
+model013_lpp_fit_meta_data <- model013_lpp_fit$metadata()
+
+model013_ssvep_fit_meta_data <- model013_ssvep_fit$metadata()
+
+
+model013_lpp_fit_relevant_parameters <- model013_lpp_fit_meta_data$model_params[
+  !str_detect(model013_lpp_fit_meta_data$model_params, "log_lik|mu_pred")]
+
+model013_ssvep_fit_relevant_parameters <- model013_ssvep_fit_meta_data$model_params[
+  !str_detect(model013_ssvep_fit_meta_data$model_params, "log_lik|mu_pred")]
+
+
+model013_lpp_fit_summary <- model013_lpp_fit$summary(
+  variables = model013_lpp_fit_relevant_parameters)
+
+model013_ssvep_fit_summary <- model013_ssvep_fit$summary(
+  variables = model013_ssvep_fit_relevant_parameters)
+
+## 14 Multi-level participant cluster truncated arousal ####
+##This would be nice but haven't implemented yet as it would take complex work around
+
+model_name <- "model014__ML_bivariate_normal_amp_arousal_truncated"
+
+model014_path <- paste0(pic_vid_repository,
                         "/stan_models/", 
                         model_name,
                         ".stan")
