@@ -3191,3 +3191,122 @@ ggsave(filename = paste0(parent_directory,
        device = "tiff",dpi = 300,
        units = "in",height = 6, width = 6,
        scale = 1.3)
+
+
+# Supplemental Figure 2 ####
+lpp_correlation_summary <- model011_lpp_fit_draws %>% 
+  select(starts_with("par_amp_aro_cor")) %>% 
+  pivot_longer(
+    cols = starts_with("par_amp_aro_cor")) %>% 
+  group_by(name) %>% 
+  summarise(probability_above_zero = sum(value > 0)/n() * 100,
+            difference_from_97_5 = if_else(probability_above_zero > 97.5,
+                                           probability_above_zero - 97.5,
+                                           0),
+            significant_T_F = if_else(probability_above_zero > 97.5,
+                                      T,
+                                      F))
+  
+merged_lpp_correlation_draws <- (model011_lpp_fit_draws %>% 
+                                  select(starts_with("par_amp_aro_cor")) %>% 
+                                  pivot_longer(cols = starts_with("par_amp_aro_cor"))) %>%
+  merge(x = ., y = lpp_correlation_summary,
+        by.x = "name", by.y = "name", all.x = T)
+
+ssvep_correlation_summary <- model011_ssvep_fit_draws %>% 
+  select(starts_with("par_amp_aro_cor")) %>% 
+  pivot_longer(
+    cols = starts_with("par_amp_aro_cor")) %>% 
+  group_by(name) %>% 
+  summarise(probability_above_zero = sum(value < 0)/n() * 100,
+            difference_from_97_5 = if_else(probability_above_zero > 97.5,
+                                           probability_above_zero - 97.5,
+                                           0),
+            significant_T_F = if_else(probability_above_zero > 97.5,
+                                      T,
+                                      F))
+  
+merged_ssvep_correlation_draws <- (model011_ssvep_fit_draws %>% 
+                                  select(starts_with("par_amp_aro_cor")) %>% 
+                                  pivot_longer(cols = starts_with("par_amp_aro_cor"))) %>%
+  merge(x = ., y = ssvep_correlation_summary,
+        by.x = "name", by.y = "name", all.x = T)
+  
+
+
+x_axis <- c(-.15,.6)
+y_axis <- c(0, 1.05)
+line_thickness_range <- c(1,2.5)
+alpha_range <- c(.1, .7)
+axis_line_thickness <- 1
+text_size <- 15
+
+(merged_lpp_correlation_draws %>% 
+  ggplot() +
+    geom_vline(aes(xintercept = 0),
+               size = 2) +
+    geom_line(aes(x = value,
+                  group = name,
+                  y = after_stat(scaled),
+                  linewidth = difference_from_97_5,
+                  alpha = difference_from_97_5,
+                  color = significant_T_F),
+              stat = "density") +
+    scale_color_manual(values = c("red1", "blue1")) +
+    scale_linewidth_continuous(range = line_thickness_range) +
+    scale_alpha_continuous(range = alpha_range) +
+    scale_y_continuous(name = "Normalized Density") +
+    scale_x_continuous(name = "Scene-LPP Arousal Correlation",
+                       breaks = seq(-.1, .5, by = .1)) +
+    coord_cartesian(xlim = x_axis, ylim = y_axis, expand = c(0)) +
+    theme_classic() +
+    theme(text = element_text(size = text_size, 
+                              family = "Arial"),
+          legend.position = "none",
+          axis.text.y = element_blank(),
+          axis.ticks.y = element_blank(),
+          axis.line = element_line(size = axis_line_thickness,
+                                   lineend = "square"),
+          axis.text = element_text(color = "black"))) /
+(merged_ssvep_correlation_draws %>% 
+  ggplot() +
+    geom_vline(aes(xintercept = 0),
+               size = 2) +
+    geom_line(aes(x = value,
+                  group = name,
+                  y = after_stat(scaled),
+                  linewidth = difference_from_97_5,
+                  alpha = difference_from_97_5,
+                  color = significant_T_F),
+                  stat = "density") +
+    scale_color_manual(values = c("red1", "blue1")) +
+    scale_linewidth_continuous(range = line_thickness_range) +
+    scale_alpha_continuous(range = alpha_range) +
+    scale_x_reverse(name = "Video-ssVEP Arousal Correlation",
+                       breaks = seq(.1, -.5, by = -.1)) +
+    scale_y_continuous(name = "Normalized Density") +
+    coord_cartesian(xlim = x_axis*-1, ylim = y_axis, expand = c(0))+
+    theme_classic() +
+    theme(text = element_text(size = text_size, 
+                              family = "Arial"),
+          legend.position = "none",
+          axis.text.y = element_blank(),
+          axis.ticks.y = element_blank(),
+          axis.line = element_line(size = axis_line_thickness,
+                                   lineend = "square"),
+          axis.text = element_text(color = "black"))) + 
+  plot_annotation(title = "Model 2: EEG by Arousal Correlation per Participant",
+          theme = theme(
+            plot.title = element_text(family = "Arial",
+                                      size = 21,
+                                      color = "black",
+                                      hjust = 0.5,
+                                      face = "bold")
+          ))
+
+
+ggsave(filename = paste0(parent_directory,
+                         "/misc/S2Figure.tiff"),
+device = "tiff",dpi = 300,
+units = "in", height = 4, width = 6,
+scale = 1.25)
