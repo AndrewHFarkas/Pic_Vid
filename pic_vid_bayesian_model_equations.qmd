@@ -1,6 +1,6 @@
 ---
 title: "Picture Video Bayesian Models"
-format: html
+format: docx
 ---
 
 
@@ -126,80 +126,3 @@ R^2 = \frac {\text{variance of predicted observations}} {(\text{variance of pred
 $$
 
 
-
-
-## Model 2: Multilevel Participant and Arousal Predictors {style="text-align: center;"}
-
-$$
-\begin{gather}
-Where \ ( i ) \ indexes \ all \ observations \ and \ ( j ) \ indexes \ 46 \ participants. \\
-Where \ ( Amplitude ) \ is \ a \ vector \ of \ observed \ cortical \ amplitudes. \\
-Where \ ( Par ) \ is \ a \ vector \ of \ participant \ indices \ for \ each \ amplitude. \\
-\end{gather} \\
-$$
-
-### Linear Model (Likelihood) {style="text-align: center;"}
-
-$$
-\begin{gather}
-Amplitude_{[i]} \sim Normal(\mu_{[i]},\sigma) \tag{1}\\
-\mu_{[i]} = \beta1_{[Par[i]]} + \beta2_{[Par[i]]} \cdot Arousal_{[i]} \tag{2}
-\end{gather}
-$$
-
-### Adaptive Regularizing Priors {style="text-align: center;"}
-
-$$
-\begin{gather}
-\beta1_{[j]} \sim Normal(\bar{Par}, \sigma Par)  \tag{3}\\
-\beta2_{[j]} \sim Normal(\bar{\beta2}, \sigma Aro)  \tag{4}
-\end{gather}
-$$
-
-### Uninformative Weak Priors {style="text-align: center;"}
-
-$$
-\begin{gather}
-\bar{Par} \sim Normal(\bar{Arousal},2 \cdot SD(Amplitude)) \tag{5}\\
-\bar{\beta2} \sim Normal(0, 2 \cdot SD(Amplitude)) \tag{6}\\
-\sigma,\sigma Par,\sigma Aro \sim HalfNormal(0,2 \cdot SD(Amplitude)) \tag{7}
-\end{gather}
-$$
-
-
-
-## Model 4: Multilevel participant and stimuli predictors {style="text-align: center;"}
-
-$$
-\begin{gather}
-Where \ ( i ) \ indexes \ all \ observations, ( j ) \ indexes \ participants,\\ 
-and \ ( k ) \ indexes \ stimuli.
-\end{gather}
-$$
-
-### Linear model {style="text-align: center;"}
-
-$$
-\begin{gather}
-Amplitude_{[i]} \sim Normal(\mu_{[i]},\sigma) \tag{1}\\
-\mu_{[i]} = \beta_{par[i]} + \beta_{stim[i]} \tag{2}
-\end{gather}
-$$
-
-### Adaptive regularizing priors {style="text-align: center;"}
-
-$$
-\begin{gather}
-\beta_{par[j]} \sim Normal(\hat{\bar{par}}, \sigma_{par}) \tag{3}\\
-\beta_{stim[k]} \sim Normal(0, \sigma_{stim}) \tag{4}
-\end{gather}
-$$
-
-### Uninformative weak priors {style="text-align: center;"}
-
-$$
-\begin{gather}
-\hat{\bar{par}} \sim Normal(\bar{par},2 * SD(Amplitude)) \tag{5}\\
-\sigma,\sigma_{par},\sigma_{stim} \sim HalfNormal(0,2 * SD(Amplitude)) \tag{6}
-\end{gather}
-$$

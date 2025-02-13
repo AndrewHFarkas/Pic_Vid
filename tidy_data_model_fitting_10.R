@@ -664,7 +664,6 @@ model002_ssvep_fit_summary <- model002_ssvep_fit$summary(
 
 
 ## 3 par and stim intercepts ####
-
 model_name <- "model003_par_stim_intercepts"
 
 model003_path <- paste0(pic_vid_repository,

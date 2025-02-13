@@ -478,6 +478,12 @@ loo::loo_compare(model011_ssvep_fit_loo,
 loo::loo_model_weights(list(model011_ssvep_fit_loo,
                             model012_ssvep_fit_loo))
 
+loo::loo_compare(model011_fft_fit_loo,
+                 model012_fft_fit_loo)
+
+loo::loo_model_weights(list(model011_fft_fit_loo,
+                            model012_fft_fit_loo))
+
 # Loo without problematic observations, doesn't make a difference
 lpp_good_indice <- which(model012_lpp_fit_loo$pointwise[,5] < .5)
 
@@ -533,6 +539,13 @@ median(model011_ssvep_fit_draws$mu_cov_amp_aro/
 
 quantile(model011_ssvep_fit_draws$mu_cov_amp_aro/
            (model011_ssvep_fit_draws$mu_par_sd_amp * model011_ssvep_fit_draws$mu_par_sd_aro),
+         probs = c(.025, .975))
+
+median(model011_fft_fit_draws$mu_cov_amp_aro/
+         (model011_fft_fit_draws$mu_par_sd_amp * model011_fft_fit_draws$mu_par_sd_aro))
+
+quantile(model011_fft_fit_draws$mu_cov_amp_aro/
+           (model011_fft_fit_draws$mu_par_sd_amp * model011_fft_fit_draws$mu_par_sd_aro),
          probs = c(.025, .975))
 
 median((model011_lpp_fit_draws$mu_cov_amp_aro/
@@ -1603,7 +1616,7 @@ gm_amp_dot_plot <- ggplot(gm_amp_long) +
                      sec.axis = sec_axis(trans = ~ . * -1, 
                                          name = "Video Z-score",
                                          breaks = -y_axis_breaks)) +
-  scale_shape_manual(values = c(22,21), labels = c("Scene LPP", "Video ssVEP")) +
+  scale_shape_manual(values = c(22,21), labels = c("Scene-LPP", "Video-Power")) +
   scale_fill_manual(values = c(valence_colors),) +
   scale_x_discrete(name = "Category", 
                    labels = c("Pleasant", "Neutral", "Unpleasant")
@@ -1688,7 +1701,7 @@ ssvep_cat_wave_plot <- ssvep_cat_wave %>%
             linewidth = line_width) +
   scale_y_continuous(limits = c(.93, 1.28),
                      breaks = seq(.95,1.25,by = .05),
-                     expand = c(0,0), name = "ssVEP (μV)") +
+                     expand = c(0,0), name = "Video-Power (μV)") +
   scale_x_continuous(limits = c(-2000,10000),expand = c(0,0),
                      breaks = seq(-1000, 9000, by = 1000),
                      labels = c(-1:9),
@@ -1767,7 +1780,7 @@ arousal_lpp_raster <- ratings_erps_path_by_scene %>%
   scale_y_continuous(limits = c(-.85,1.05),
                      breaks = seq(-.75,1, by = .25),
                      expand = c(0,0),
-                     name = "Z-scored LPP") +
+                     name = "Z-scored Scene-LPP") +
   theme_classic() +
   theme(text = element_text(size = text_size, family = "Arial"),
         axis.line = element_line(size = axis_line_thickness,
@@ -1822,16 +1835,16 @@ arousal_lpp_raster <- arousal_lpp_raster +
 
 arousal_ssvep_raster <- ratings_erps_path_by_scene %>% 
   filter(Stim_type == "Video") %>% 
-  ggplot(aes(mean_aro, -1*zscore_amp)) +
+  ggplot(aes(mean_aro, zscore_amp)) +
   geom_blank() +
   scale_x_continuous(breaks = seq(3, 8, by = 1),
                      limits = c(3,8),
                      expand = c(0,0),
                      name = "Video Arousal Rating") +
-  scale_y_continuous(limits = c(-.85,1.05),
-                     breaks = seq(-.75,1, by = .25),
-                     expand = c(0,0),
-                     name = "Reversed Z-scored ssVEP") +
+  scale_y_reverse(limits = c(.85,-1.05),
+                  breaks = seq(75,-1, by = -.25),
+                  expand = c(0,0),
+                  name = "Z-scored Video-Power") +
   theme_classic() +
   theme(text = element_text(size = text_size, family = "Arial"),
         axis.line = element_line(size = axis_line_thickness,
@@ -1878,7 +1891,7 @@ arousal_ssvep_raster <- arousal_ssvep_raster +
               aes(ymin = ..y.. - (1.96 * ..se..), # make 95% CI
                   ymax = ..y.. + (1.96 * ..se..)), 
               alpha = .2, color = "black", linetype = "blank") +
-  annotate("text", x = 4.77, y = .87,
+  annotate("text", x = 4.77, y = -.87,
            label = "paste(italic('r'),'(88) = .63',', ', italic('p'), ' < .001')",
            parse = T,
            size = inner_raster_text_size)
@@ -1974,7 +1987,6 @@ ssvep_valence_posteriors <-
                                   "neutral",
                                   "unpleasant",
                                   "emotional_difference"))) 
-
 
 ssvep_valence_posteriors %>% 
   group_by(name) %>% 
@@ -2076,7 +2088,7 @@ guide_area() +
                         expand = c(0,0)) +
      scale_y_continuous(expand = c(0,0.007)) +
      coord_cartesian(xlim = c(-2.5,2.5)) +
-     ggtitle("LPP Valence Posteriors") +
+     ggtitle("Scene Valence Posteriors") +
      theme_classic()+
      theme(
        axis.title.y = element_blank(),
@@ -2140,13 +2152,13 @@ guide_area() +
                                "Neutral", 
                                "Unpleasant",
                                "Emotional vs Neutral")) +
-  scale_x_continuous(name = "Δ ssVEP Microvoltage",
+  scale_x_continuous(name = "Δ Power Microvoltage",
                      breaks = seq(-.04, .04, by = .02),
                      labels = seq(-.04, .04, by = .02),
                      expand = c(0,0)) +
   scale_y_continuous(expand = c(0,0.1)) +
   coord_cartesian(xlim = c(-.0575, .0575)) +
-  ggtitle("ssVEP Valence Posteriors") +
+  ggtitle("Video Valence Posteriors") +
   theme_classic()+
   theme(
     axis.title.y = element_blank(),
@@ -2281,7 +2293,7 @@ guide_area() +
   scale_y_discrete(expand = c(0,0)) +
   coord_cartesian(xlim = c(.35,1.7),
                   ylim = par_pos_y_limits) +
-  ggtitle("Mean ssVEP per Participant") +
+  ggtitle("Mean Power per Participant") +
   theme_classic() +
   theme(axis.title = element_blank(),
         axis.text = element_blank(),
@@ -2320,7 +2332,7 @@ guide_area() +
   scale_y_continuous(expand = c(0,0)) +
   coord_cartesian(xlim = c(.35,1.7),
                   ylim = c(0, 1.8)) +
-  ggtitle("ssVEP Participant Distribution") +
+  ggtitle("Power Participant Distribution") +
   theme_classic()+
   theme(
     axis.title.y = element_blank(),
@@ -2433,6 +2445,17 @@ model012_ssvep_fit_draws %>%
             q2_5 = quantile(amp_sd, probs = .025),
             q97_5 = quantile(amp_sd, probs = .975))
 
+fft_valence_posteriors %>% 
+  group_by(name) %>% 
+  summarise(median_amp = median(value),
+            q2_5 = quantile(value, probs = .025),
+            q97_5 = quantile(value, probs = .975))
+
+model012_fft_fit_draws %>% 
+  summarise(median_sd_per_trial = median(amp_sd),
+            q2_5 = quantile(amp_sd, probs = .025),
+            q97_5 = quantile(amp_sd, probs = .975))
+
 
 ((lpp_valence_posteriors %>% 
   filter(name == "emotional_difference") %>% 
@@ -2446,6 +2469,14 @@ model012_ssvep_fit_draws %>%
 ((ssvep_valence_posteriors %>% 
   filter(name == "emotional_difference") %>% 
   pull(value) *-1) / model012_ssvep_fit_draws$amp_sd) %>% 
+  data.frame("SNR_posterior_samples" = .) %>% 
+  summarise(median_SNR = median(SNR_posterior_samples),
+            CI2_5 = quantile(SNR_posterior_samples, .025),
+            CI97_5 = quantile(SNR_posterior_samples, .975))
+
+((fft_valence_posteriors %>% 
+  filter(name == "emotional_difference") %>% 
+  pull(value) *-1) / model012_fft_fit_draws$amp_sd) %>% 
   data.frame("SNR_posterior_samples" = .) %>% 
   summarise(median_SNR = median(SNR_posterior_samples),
             CI2_5 = quantile(SNR_posterior_samples, .025),
@@ -2640,7 +2671,7 @@ fig7_ssvep_bottom <- ssvep_erot_surg_val_posteriors %>%
   ) +
   scale_linetype_manual(values = fig7_linetypes,
                         guide = "none") +
-  scale_x_reverse(name = "Δ ssVEP Microvoltage (Axis Reversed)",
+  scale_x_reverse(name = "Δ Video-Power Microvoltage (Axis Reversed)",
                   limits = c(.07,-.1206),
                   breaks = seq(.04, -.08, by = -.02),
                   expand = c(0,0),
@@ -2713,7 +2744,7 @@ B
 
 fig7_lpp_top + fig7_ssvep_bottom +
   plot_layout(design = layout_grid, guides = "collect")  +
-  plot_annotation(title = "Video-ssVEP Lacks Typical Scene-LPP Erotica and Gore Sensitivity",
+  plot_annotation(title = "Video-power Lacks Typical Scene-LPP Erotica and Gore Sensitivity",
                   theme = theme(
                     plot.title = element_text(family = font_font,
                                               size = font_size + 2.65,
@@ -2914,7 +2945,7 @@ RR_fig7_ssvep <- ssvep_erot_surg_val_posteriors %>%
   ) +
   scale_linetype_manual(values = fig7_linetypes,
                         guide = "none") +
-  scale_x_reverse(name = "Δ ssVEP Microvoltage (Axis Reversed)",
+  scale_x_reverse(name = "Δ Video-Power Microvoltage (Axis Reversed)",
                   limits = c(.07,-.1206),
                   breaks = seq(.04, -.08, by = -.02),
                   expand = c(0,0),
@@ -2999,7 +3030,7 @@ BBBBBBBBBBBBBBBCCCCCDDDD
 
 free(RR_fig7_lpp) + free(RR_fig7_ssvep) + free(fig7_RR_aro_dot) + free(fig7_RR_val_dot) +
   plot_layout(design = layout_grid)  +
-  plot_annotation(title = "Video-ssVEP Lacks Typical Scene-LPP Erotica and Gore Sensitivity",
+  plot_annotation(title = "Video-Power Lacks Typical Scene-LPP Erotica and Gore Sensitivity",
                   theme = theme(
                     plot.title = element_text(family = font_font,
                                               size = font_size + 8,
@@ -3020,6 +3051,479 @@ ggsave(filename = paste0(parent_directory,
 #        device = "svg",
 #        units = "in",height = 5, width = 8.6,
 #        scale = 1.5)
+
+# Figure 8 FFT power ####
+library(tidyverse)
+library(R.matlab)
+## Load fft results ####
+fft_structs <- readMat('/home/andrewf/Research_data/EEG/Pic_Vid/misc/high_pass_3_1hz_video_single_trial_fft.mat')
+
+ssvepOccipitalChannels = c(56, 61, 59, 62, 63, 64, 125, 127, 128)
+
+# looking at sliding window 7.5 hz cate averages
+
+start_index <- 1
+SW_fft_df <- data.frame(par = numeric(), 
+                        stim = numeric(),
+                        amp = numeric())
+
+while (start_index < length(fft_structs$SWPerTrialResultStruc)) {
+  
+  current_filepath <- fft_structs$SWPerTrialResultStruc[start_index] %>% unlist()
+  
+  current_par <- sub(".*_(\\d+)_.*", "\\1", current_filepath) %>% as.numeric()
+  current_stim <- sub(".*\\.at(\\d+).ar$", "\\1", current_filepath) %>% as.numeric()
+  
+  amp_per_freq <- fft_structs$SWPerTrialResultStruc[start_index + 1] %>% 
+    unlist() 
+  
+  occipital_amp_per_freq <- amp_per_freq[ssvepOccipitalChannels] %>% mean()
+  
+  current_fft_df_entry <- data.frame(par = current_par, 
+                                     stim = current_stim,
+                                     amp = occipital_amp_per_freq)
+  
+  SW_fft_df <- rbind(SW_fft_df, current_fft_df_entry)
+  
+  start_index <- start_index + 5
+  
+}
+
+video_key <- read.csv(file = '/home/andrewf/Research_data/EEG/Pic_Vid/misc/video_key.csv')
+
+SW_fft_df <- merge(x = SW_fft_df, y = video_key, 
+                   by.x = "stim", by.y = "video_id",
+                   all.x = T)
+
+par_id_ordered <- unique(SW_fft_df$par) %>% 
+  sort() %>% 
+  as.character()
+
+stim_id_ordered <- unique(SW_fft_df$stim) %>% 
+  sort() %>% 
+  as.character()
+
+SW_fft_df <- SW_fft_df %>% 
+  reframe(par = factor(as.character(par),
+                       levels = par_id_ordered),
+          stim = factor(as.character(stim),
+                        levels = stim_id_ordered),
+          amp = amp,
+          video = video,
+          cat_id = factor(cat_id,
+                          levels = c(1:3)))
+
+SW_fft_df %>% 
+  select(-c("stim","video")) %>% 
+  group_by(par, cat_id) %>% 
+  summarise_all(mean) %>% 
+  group_by(par) %>% 
+  mutate(zamp = as.vector(scale(amp))) %>% 
+  group_by(cat_id) %>% 
+  summarise(mean_amp = mean(amp),
+            se_amp = plotrix::std.error(amp),
+            mean_zamp = mean(zamp),
+            se_zamp = plotrix::std.error(zamp))
+
+
+# look at 7.5 hz noremal fft cate averages
+all_frequencies <- fft_structs$PerTrialResultStruc[3] %>% unlist()
+frequencies <- all_frequencies[2:241] # .125 to 30 hz
+# frequencies <- all_frequencies[57:65] # 7 to 8 hz
+# frequencies <- all_frequencies[25:89] # 3 to 11hz
+
+start_index <- 1
+fft_df <- data.frame(par = numeric(), 
+                     stim = numeric(),
+                     amp = numeric(),
+                     freqs = numeric())
+
+
+while (start_index < length(fft_structs$PerTrialResultStruc)) {
+  
+  current_filepath <- fft_structs$PerTrialResultStruc[start_index] %>% unlist()
+  
+  current_par <- sub(".*_(\\d+)_.*", "\\1", current_filepath) %>% as.numeric()
+  current_stim <- sub(".*\\.at(\\d+).ar$", "\\1", current_filepath) %>% as.numeric()
+  
+  amp_per_all_freqs <- fft_structs$PerTrialResultStruc[start_index + 1] %>% 
+    unlist() %>% 
+    matrix(nrow = 9) 
+  
+  amp_per_freq <- amp_per_all_freqs[,2:241] %>% colMeans() # change indices if changing frequencies
+  
+  current_fft_df_entry <- data.frame(par = current_par, 
+                                     stim = current_stim,
+                                     amp = amp_per_freq,
+                                     freqs = frequencies)
+  
+  fft_df <- rbind(fft_df, current_fft_df_entry)
+  
+  start_index <- start_index + 3
+  
+}
+
+
+video_key <- read.csv(file = '/home/andrewf/Research_data/EEG/Pic_Vid/misc/video_key.csv')
+
+fft_df <- merge(x = fft_df, y = video_key, 
+                by.x = "stim", by.y = "video_id",
+                all.x = T)
+
+# par_id_ordered <- unique(fft_df$par) %>% 
+#   sort() %>% 
+#   as.character()
+# 
+# stim_id_ordered <- unique(fft_df$stim) %>% 
+#   sort() %>% 
+#   as.character()
+
+fft_df <- fft_df %>% 
+  reframe(par = par,
+          stim = stim,
+          amp = amp,
+          video = video,
+          # freqs = factor(as.character(freqs),
+          #                levels = frequencies),
+          freqs = freqs,
+          cat_id = factor(cat_id,
+                          levels = c(1:3)))
+
+
+fft_df %>% 
+  filter(freqs >= 7, freqs <= 8) %>% 
+  select(-c("stim","video","freqs")) %>% 
+  group_by(par, cat_id) %>% 
+  summarise_all(mean) %>% 
+  group_by(par) %>% 
+  mutate(zamp = as.vector(scale(amp))) %>% 
+  mutate(amp_diff = amp - mean(amp)) %>% 
+  group_by(cat_id) %>% 
+  summarise(mean_amp = mean(amp),
+            se_amp = plotrix::std.error(amp),
+            mean_zamp = mean(zamp),
+            se_zamp = plotrix::std.error(zamp),
+            mean_amp_diff = mean(amp_diff),
+            se_amp_diff = plotrix::std.error(amp_diff))
+
+fft_df %>%
+  filter(freqs == 7.5) %>% 
+  select(-c("stim","video","freqs")) %>% 
+  group_by(par, cat_id) %>% 
+  summarise_all(mean) %>% 
+  group_by(par) %>% 
+  mutate(zamp = as.vector(scale(amp))) %>% 
+  mutate(amp_diff = amp - mean(amp)) %>% 
+  group_by(cat_id) %>% 
+  summarise(mean_amp = mean(amp),
+            se_amp = plotrix::std.error(amp),
+            mean_zamp = mean(zamp),
+            se_zamp = plotrix::std.error(zamp),
+            mean_amp_diff = mean(amp_diff),
+            se_amp_diff = plotrix::std.error(amp_diff))
+
+fft_df %>%
+  filter(freqs != 7.5, freqs >= 7, freqs <= 8) %>% 
+  select(-c("stim","video","freqs")) %>% 
+  group_by(par, cat_id) %>% 
+  summarise_all(mean) %>% 
+  group_by(par) %>% 
+  mutate(zamp = as.vector(scale(amp))) %>% 
+  mutate(amp_diff = amp - mean(amp)) %>% 
+  group_by(cat_id) %>% 
+  summarise(mean_amp = mean(amp),
+            se_amp = plotrix::std.error(amp),
+            mean_zamp = mean(zamp),
+            se_zamp = plotrix::std.error(zamp),
+            mean_amp_diff = mean(amp_diff),
+            se_amp_diff = plotrix::std.error(amp_diff))
+
+cat_df <- fft_df %>%
+  filter(freqs >= 7, freqs <= 8) %>% 
+  select(-c("stim","video","freqs")) %>% 
+  group_by(par, cat_id) %>% 
+  summarise_all(mean) %>% 
+  group_by(par) %>% 
+  mutate(zamp = as.vector(scale(amp))) %>% 
+  mutate(amp_diff = amp - mean(amp)) %>% 
+  ungroup()
+
+cat_df_ssvep <- fft_df %>%
+  filter(freqs == 7.5) %>% 
+  select(-c("stim","video","freqs")) %>% 
+  group_by(par, cat_id) %>% 
+  summarise_all(mean) %>% 
+  group_by(par) %>% 
+  mutate(zamp = as.vector(scale(amp))) %>% 
+  mutate(amp_diff = amp - mean(amp)) %>% 
+  ungroup()
+
+cat_df_exclude_ssvep <- fft_df %>%
+  filter(freqs != 7.5, freqs >= 7, freqs <= 8) %>% 
+  select(-c("stim","video","freqs")) %>% 
+  group_by(par, cat_id) %>% 
+  summarise_all(mean) %>% 
+  group_by(par) %>% 
+  mutate(zamp = as.vector(scale(amp))) %>% 
+  mutate(amp_diff = amp - mean(amp)) %>% 
+  ungroup()
+
+cat_df_wide <- fft_df %>%
+  filter(freqs != 7.5, freqs >= 3, freqs <= 10) %>% 
+  select(-c("stim","video","freqs")) %>% 
+  group_by(par, cat_id) %>% 
+  summarise_all(mean) %>% 
+  group_by(par) %>% 
+  mutate(zamp = as.vector(scale(amp))) %>% 
+  mutate(amp_diff = amp - mean(amp)) %>% 
+  ungroup()
+
+
+afex::aov_ez(id = "par", 
+             dv = "zamp", 
+             within = "cat_id", 
+             data =cat_df)
+
+afex::aov_ez(id = "par", 
+             dv = "zamp", 
+             within = "cat_id", 
+             data =cat_df_ssvep)
+
+afex::aov_ez(id = "par", 
+             dv = "zamp", 
+             within = "cat_id", 
+             data =cat_df_exclude_ssvep)
+
+afex::aov_ez(id = "par", 
+             dv = "zamp", 
+             within = "cat_id", 
+             data =cat_df_wide)
+
+
+gm_cat_df_ssvep <- cat_df_ssvep %>% 
+  group_by(cat_id) %>% 
+  summarise(mean_zamp = -mean(zamp),
+            se_zamp = plotrix::std.error(zamp),
+            mean_amp_diff = mean(amp_diff),
+            se_amp_diff = plotrix::std.error(amp_diff)) %>% 
+  mutate(type = factor(1,levels = c(1:3)))
+
+gm_cat_df <- cat_df %>% 
+  group_by(cat_id) %>% 
+  summarise(mean_zamp = -mean(zamp),
+            se_zamp = plotrix::std.error(zamp),
+            mean_amp_diff = mean(amp_diff),
+            se_amp_diff = plotrix::std.error(amp_diff)) %>% 
+  mutate(type = factor(2,levels = c(1:3)))
+
+gm_cat_df_wide <- cat_df_wide %>% 
+  group_by(cat_id) %>% 
+  summarise(mean_zamp = -mean(zamp),
+            se_zamp = plotrix::std.error(zamp),
+            mean_amp_diff = mean(amp_diff),
+            se_amp_diff = plotrix::std.error(amp_diff)) %>% 
+  mutate(type = factor(3,levels = c(1:3)))
+
+rbind.data.frame(gm_cat_df,gm_cat_df_ssvep,gm_cat_df_wide) %>% 
+  ggplot() +
+  geom_pointrange(aes(x = cat_id, 
+                      y = mean_zamp,
+                      ymin = mean_zamp - se_zamp,
+                      ymax = mean_zamp + se_zamp,
+                      color = cat_id,
+                      pch = type),
+                  position = position_dodge(.1)) +
+  scale_color_manual(values = fig8_val_colors,
+                     labels = c("Pleasant",
+                                "Neutral",
+                                "Unpleasant")) +
+  scale_shape_discrete(name = "Measure",
+                       labels = c("7.5Hz", 
+                                  "7 - 8Hz",
+                                  "3 - 10HZ")) +
+  ggtitle("Z-scored amplitudes") +
+  theme_classic()
+
+rbind.data.frame(gm_cat_df, gm_cat_df_ssvep, gm_cat_df_wide) %>% 
+  ggplot() +
+  geom_pointrange(aes(x = cat_id, 
+                      y = mean_amp_diff,
+                      ymin = mean_amp_diff - se_amp_diff,
+                      ymax = mean_amp_diff + se_amp_diff,
+                      color = cat_id,
+                      pch = type),
+                  position = position_dodge(.1)) +
+  scale_color_manual(values = fig8_val_colors,
+                     labels = c("Pleasant",
+                                "Neutral",
+                                "Unpleasant")) +
+  scale_shape_discrete(name = "Measure",
+                   labels = c("7.5Hz", 
+                              "7 - 8Hz",
+                              "3 - 10HZ")) +
+  ggtitle("difference from participant mean") +
+  theme_classic()
+
+
+
+## Plot ####
+fig8_val_colors <- c("blue1", "black", "red1")
+plot_font_size <- 15
+dot_y_axis_breaks <- seq(-.9, .9, by = .2)
+
+layout_grid <- c("
+AAAAAAAAAAAAAAACCCCC
+BBBBBBBBBBBBBBBCCCCC
+")
+
+fft_gm_plot <- fft_df %>% 
+  filter(freqs >= 1, freqs < 30) %>%
+  select(-c("stim","video")) %>%
+  group_by(par, cat_id, freqs) %>%
+  summarise_all(mean) %>% 
+  group_by(par, freqs) %>% 
+  mutate(zamp = as.vector(scale(amp))) %>% 
+  mutate(amp_diff = amp - mean(amp)) %>% 
+  group_by(freqs, cat_id) %>%
+  summarise(mean_amp = mean(amp),
+            se_amp = plotrix::std.error(amp),
+            mean_zamp = mean(zamp),
+            se_zamp = plotrix::std.error(zamp),
+            mean_amp_diff = mean(amp_diff),
+            se_amp_diff = plotrix::std.error(amp_diff)) %>% 
+  ggplot() +
+  geom_vline(aes(xintercept = 7), linetype = "dashed") +
+  geom_vline(aes(xintercept = 8), linetype = "dashed") +
+  geom_line(aes(x = freqs, y = mean_amp, color = cat_id), linewidth = 1)  +
+  scale_color_manual(values = fig8_val_colors, name = "Category", labels = c("Pleasant", "Neutral", "Unpleasant")) +
+  scale_x_continuous(breaks = seq(2.5,30,by = 2.5),name = "Frequency (Hz)", expand = c(0,0)) +
+  scale_y_continuous(name = "Power (Aribitary Units)",expand = c(0,0)) +
+  theme_bw() +
+  theme(text = element_text(size = plot_font_size),
+        legend.position = "none",
+        axis.line = element_line(size = 1,
+                                 lineend = "square"),
+        axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks = element_blank()) +
+  annotate("text",
+           x = 25, 
+           y = .47,
+           label = "Pleasant",
+           family = "Arial",
+           color = fig8_val_colors[1],
+           size = 11) +
+  annotate("text",
+           x = 25, 
+           y = .39,
+           label = "Neutral",
+           family = "Arial",
+           color = fig8_val_colors[2],
+           size = 11) +
+  annotate("text",
+           x = 25, 
+           y = .31,
+           label = "Unpleasant",
+           family = "Arial",
+           color = fig8_val_colors[3],
+           size = 11) 
+
+
+fft_diff_plot <- fft_df %>% 
+  filter(freqs >= 1, freqs < 30) %>%
+  select(-c("stim","video")) %>%
+  group_by(par, cat_id, freqs) %>%
+  summarise_all(mean) %>% 
+  group_by(par, freqs) %>% 
+  mutate(zamp = as.vector(scale(amp))) %>% 
+  mutate(amp_diff = amp - mean(amp)) %>% 
+  group_by(freqs, cat_id) %>%
+  summarise(mean_amp = mean(amp),
+            se_amp = plotrix::std.error(amp),
+            mean_zamp = mean(zamp),
+            se_zamp = plotrix::std.error(zamp),
+            mean_amp_diff = mean(amp_diff),
+            se_amp_diff = plotrix::std.error(amp_diff)) %>% 
+  ggplot() +
+  geom_vline(aes(xintercept = 7), linetype = "dashed") +
+  geom_vline(aes(xintercept = 8), linetype = "dashed") +
+  geom_errorbar(aes(x = freqs,
+                    ymin = mean_amp_diff - se_amp_diff, ymax = mean_amp_diff + se_amp_diff,
+                    color = cat_id), linewidth = .5, width = 0)  +
+  geom_line(aes(x = freqs, y = mean_amp_diff, color = cat_id), linewidth = 1)  +
+  scale_color_manual(values = fig8_val_colors, name = "Category", labels = c("Pleasant", "Neutral", "Unpleasant")) +
+  scale_fill_manual(values = fig8_val_colors, name = "Category", labels = c("Pleasant", "Neutral", "Unpleasant")) +
+  scale_x_continuous(breaks = seq(2.5,30,by = 2.5), labels = seq(2.5,30,by = 2.5),name = "Frequency (Hz)", expand = c(0,0)) +
+  scale_y_continuous(name = "Δ Power",expand = c(0,0)) +
+  theme_bw() +
+  theme(text = element_text(size = plot_font_size),
+        axis.line = element_line(size = 1,
+                                 lineend = "square"),
+        axis.ticks = element_blank(),
+        legend.position = "none")
+
+
+fig8_dot_plot <- rbind(gm_cat_df,gm_cat_df_ssvep) %>% 
+     ggplot() +
+     # geom_pointrange(aes(x = category_name, shape = erp_type,
+     #                     y = mean_amp, ymax = mean_amp + se_amp,
+     #                     ymin = mean_amp - se_amp),
+     #                 color = "black",
+     #                 position = position_dodge(width = 0.4),
+     #                 size = 2.5, linewidth = 4) + 
+     geom_pointrange(aes(x = cat_id,shape = type,
+                         y = mean_zamp, ymax = mean_zamp + se_zamp,
+                         ymin = mean_zamp - se_zamp,
+                         fill = cat_id),
+                     position = position_dodge(width = 0.4),
+                     size = 1.5, stroke = 2, linewidth = 2) + 
+     scale_y_continuous(breaks = dot_y_axis_breaks,
+                        name = "Reversed Z-score",
+                        limits = c(-1,1),
+                        expand = c(0,0)) +
+     scale_shape_manual(values = c(22,21),labels = c("7 - 8Hz Power", "7.5Hz ssVEP Power")) +
+     scale_fill_manual(values = c(fig8_val_colors)) +
+     scale_x_discrete(name = "Category", 
+                      labels = c("Pleasant", "Neutral", "Unpleasant")) +
+     theme_classic() +
+     theme(legend.position = c(.5,.98), 
+           legend.title = element_blank(),
+           legend.justification = c(.5,1),
+           legend.text = element_text(face = "bold"),
+           legend.key.height = unit(.9, "cm"),
+           legend.box.margin = margin(-15, 0, 0, 0),
+           text = element_text(size = 15, family = "Arial"),
+           axis.line = element_line(size = 1,
+                                    lineend = "square"),
+           axis.ticks = element_blank(),
+           axis.text.x = element_blank(),
+           axis.text = element_text(color = "black")) +
+     guides(shape = guide_legend(direction = "vertical", title.position = "top",override.aes = list(linetype = 0)),fill = "none")
+
+(fft_gm_plot) + (fft_diff_plot) + free(fig8_dot_plot) +
+  plot_layout(design = layout_grid)  +
+  plot_annotation(title = "Power Between 7-8Hz Mostly Likely Cause of Video Effects",
+                  theme = theme(
+                    plot.title = element_text(family = "Arial",
+                                              size = 25,
+                                              color = "black",
+                                              hjust = 0.5,
+                                              face = "bold")))
+
+
+ggsave(filename = paste0(parent_directory,
+                         "/misc/008FFT_results.tiff"),
+       device = "tiff",dpi = 300,
+       units = "in",height = 3, width = 6,
+       scale = 2)
+
+ggsave(filename = paste0(parent_directory,
+                         "/misc/008FFT_results.svg"),
+       device = "svg",
+       units = "in",height = 3, width = 6,
+       scale = 2)
+
+
 
 
 

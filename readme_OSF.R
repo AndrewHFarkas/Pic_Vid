@@ -3,11 +3,14 @@
 # To see how the data was arrived at, you can look at the github repository & paper.
 load("pic_vid_stan_df.RData")
 
+
+
+
 # This is the full dataset used for all analyses.
 # `par` is participant ID number
 # `age` is the participant's age
 # `sex` is the participant's sex, which could have been left blank or filled in
-# `race.ethnicity` is the participant's self-reported race / ethnicity
+# `race_ethnicity` is the participant's self-reported race / ethnicity
 # `vids_first_is_one` states if the participant saw the video or picture series first
 # `type` is if the trial was a picture (1) or a video (2)
 # `cate` is the predetermined valence category pleasant (1), neutral (2), unpleasant (3)
